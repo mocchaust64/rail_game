@@ -1,12 +1,11 @@
 class_name LevelBuilder
 extends RefCounted
-# Builds gameplay plus the reference-video presentation. Junction outgoing paths
-# keep their pale guide rails visible, but the dark belt starts after the long
-# rotating conveyor section owned by JunctionActor.
+# Builds gameplay plus the reference-video presentation. Possible routes are
+# visible as pale guide rails; junctions own the dark moving bridge that connects
+# one branch at a time.
 
 const LEVEL_PATH := "res://levels/level_%02d.json"
 const BLOCKING_TYPES := ["receiver", "source"]
-const JUNCTION_VISUAL_GAP := 1.50
 
 
 static func load_data(level_number: int) -> Dictionary:
@@ -65,6 +64,7 @@ static func build(level: Dictionary, world: Node3D, pool_size: int) -> Dictionar
             "source":
                 var source := SourceActor.new()
                 source.position = positions[id]
+                source.rotation.y = deg_to_rad(float(node.get("rotation_y", 0.0)))
                 world.add_child(source)
                 source.configure(String(id), String(node.get("source_style", "compact")))
                 sources[id] = source
@@ -109,6 +109,13 @@ static func _draw_tracks(nodes_by_id: Dictionary, positions: Dictionary, world: 
         var id := String(raw_id)
         var node: Dictionary = nodes_by_id[id]
         var targets := _targets(node)
+        var node_type := String(node.get("type", "normal"))
+        # Junction branches in the reference are mostly bare silver guide rails;
+        # the dark belt is the physical bridge owned by JunctionActor.
+        var default_belt := node_type != "junction"
+        var show_belt := bool(node.get("belt", default_belt))
+        var show_guides := bool(node.get("guides", true))
+
         for raw_target in targets:
             var target := String(raw_target)
             if target.is_empty() or not positions.has(target):
@@ -120,8 +127,7 @@ static func _draw_tracks(nodes_by_id: Dictionary, positions: Dictionary, world: 
             var start: Vector3 = positions[id]
             var finish: Vector3 = positions[target]
             var points := TrackGeometry.path_for(id, target, start, finish)
-            var belt_gap := JUNCTION_VISUAL_GAP if String(node.get("type", "normal")) == "junction" else 0.0
-            TrackVisuals.create_path(world, points, belt_gap, 0.0, true, true)
+            TrackVisuals.create_path(world, points, 0.0, 0.0, show_belt, show_guides)
             drawn[key] = true
 
 
