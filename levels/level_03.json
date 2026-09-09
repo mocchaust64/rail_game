@@ -10,6 +10,7 @@
       "id": "S",
       "pos": [0.0, -6.0],
       "type": "source",
+      "source_style": "bank",
       "next": "N0"
     },
     {
