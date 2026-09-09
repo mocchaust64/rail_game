@@ -300,7 +300,7 @@ func _spawn_item(kind: String, source_id: String, returning: bool) -> void:
         return
     if not item.finished.is_connected(_on_item_finished):
         item.finished.connect(_on_item_finished)
-    item.configure(kind, source_id, source_id, next_id, positions[source_id], positions[next_id], float(level["item_speed"]))
+    item.configure(kind, source_id, source_id, next_id, positions[source_id], positions[next_id], SaveService.scaled_speed(float(level["item_speed"])))
     active_items.append(item)
 
     if sources.has(source_id):

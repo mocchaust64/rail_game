@@ -45,7 +45,7 @@ func _process(delta: float) -> void:
 func react_launch() -> void:
     if _shell == null:
         return
-    var tween := _shell.create_tween()
+    var tween := Motion.tween(_shell)
     tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
     tween.tween_property(_shell, "scale", Vector3(1.04, 0.92, 1.04), 0.07)
     tween.tween_property(_shell, "scale", Vector3.ONE, 0.12)

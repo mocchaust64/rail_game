@@ -26,7 +26,7 @@ func _process(delta: float) -> void:
 func accept() -> void:
     _kill_reaction_tween()
     var base_scale := Vector3.ONE
-    _reaction_tween = create_tween()
+    _reaction_tween = Motion.tween(self)
     _reaction_tween.set_parallel(true)
     _reaction_tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
     _reaction_tween.tween_property(self, "scale", base_scale * 1.065, 0.10)
@@ -40,13 +40,13 @@ func accept() -> void:
 func reject() -> void:
     _kill_reaction_tween()
     var start := position
-    _reaction_tween = create_tween()
+    _reaction_tween = Motion.tween(self)
     _reaction_tween.set_trans(Tween.TRANS_SINE)
     _reaction_tween.tween_property(self, "position:x", start.x - 0.09, 0.05)
     _reaction_tween.tween_property(self, "position:x", start.x + 0.09, 0.07)
     _reaction_tween.tween_property(self, "position:x", start.x, 0.06)
     if _lamp != null:
-        var lamp_tween := _lamp.create_tween()
+        var lamp_tween := Motion.tween(_lamp)
         lamp_tween.tween_property(_lamp, "scale", Vector3.ONE * 1.35, 0.08)
         lamp_tween.tween_property(_lamp, "scale", Vector3.ONE, 0.12)
 

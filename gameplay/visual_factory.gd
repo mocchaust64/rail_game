@@ -254,7 +254,7 @@ static func create_spark_burst(parent: Node3D, origin: Vector3, color: Color) ->
         root.add_child(spark)
         var angle := TAU * float(i) / float(count)
         var target := Vector3(cos(angle) * 0.62, 0.20 + float(i % 3) * 0.12, sin(angle) * 0.62)
-        var tween := spark.create_tween()
+        var tween := Motion.tween(spark)
         tween.set_parallel(true)
         tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
         tween.tween_property(spark, "position", target, 0.32)
@@ -273,7 +273,7 @@ static func create_win_confetti(parent: Node3D, origin: Vector3 = Vector3(0, 0.6
         var angle := TAU * float(i) / 20.0
         var radius := 1.4 + float(i % 4) * 0.22
         var target := Vector3(cos(angle) * radius, 1.0 + float(i % 5) * 0.23, sin(angle) * radius)
-        var tween := piece.create_tween()
+        var tween := Motion.tween(piece)
         tween.set_parallel(true)
         tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
         tween.tween_property(piece, "position", target, 0.46)

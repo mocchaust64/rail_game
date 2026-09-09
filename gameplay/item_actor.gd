@@ -26,7 +26,7 @@ func configure(item_kind: String, source_id: String, start_id: String, next_id: 
 	_build_visual()
 	start_segment(start_id, next_id, start_pos, next_pos)
 	scale = Vector3.ONE * 0.2
-	var spawn_tween := create_tween()
+	var spawn_tween := Motion.tween(self)
 	spawn_tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	spawn_tween.tween_property(self, "scale", Vector3.ONE, 0.16)
 	state = ItemState.TRAVELING
@@ -85,7 +85,7 @@ func advance(delta: float) -> bool:
 
 func animate_delivered() -> void:
 	state = ItemState.DELIVERING
-	var tween := create_tween()
+	var tween := Motion.tween(self)
 	tween.set_parallel(true)
 	tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tween.tween_property(self, "scale", Vector3.ONE * 0.08, 0.16)
@@ -95,7 +95,7 @@ func animate_delivered() -> void:
 
 func animate_buffered(target_global: Vector3) -> void:
 	state = ItemState.BUFFERING
-	var tween := create_tween()
+	var tween := Motion.tween(self)
 	tween.set_parallel(true)
 	tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
 	tween.tween_property(self, "global_position", target_global, 0.22)

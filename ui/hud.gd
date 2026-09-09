@@ -7,6 +7,8 @@ signal pause_requested
 signal resume_requested
 signal debug_previous_requested
 signal debug_next_requested
+signal text_scale_changed
+signal game_speed_changed
 
 var _level_label: Label
 var _buffer_slots: Array[PanelContainer] = []
@@ -23,9 +25,12 @@ var _overlay_title: Label
 var _overlay_subtitle: Label
 var _overlay_primary: Button
 var _overlay_secondary: Button
-var _settings_row: HBoxContainer
+var _settings_row: GridContainer
 var _sound_button: Button
 var _haptic_button: Button
+var _motion_button: Button
+var _text_button: Button
+var _speed_button: Button
 var _debug_row: HBoxContainer
 var _overlay_mode: String = ""
 
@@ -33,7 +38,7 @@ func _ready() -> void:
     _build()
 
 func set_level(level_number: int, title: String) -> void:
-    _level_label.text = "LEVEL %02d  •  %s" % [level_number, title]
+    _level_label.text = tr("UI_LEVEL_FORMAT") % [level_number, title]
 
 func set_upcoming(kinds: Array) -> void:
     for i in range(_upcoming_icons.size()):
@@ -63,11 +68,13 @@ func set_buffer(kinds: Array, capacity: int) -> void:
 func flash_buffer() -> void:
     if _buffer_panel == null:
         return
-    var tween := _buffer_panel.create_tween()
+    var tween := Motion.tween(_buffer_panel)
     tween.tween_property(_buffer_panel, "scale", Vector2(1.025, 1.025), 0.08)
     tween.tween_property(_buffer_panel, "scale", Vector2.ONE, 0.12)
 
-func set_tutorial_visible(value: bool, text: String = "TAP THE GLOWING SWITCH") -> void:
+func set_tutorial_visible(value: bool, text: String = "") -> void:
+    if text.is_empty():
+        text = tr("UI_TUTORIAL_TAP")
     _tutorial_label.text = text
     _tutorial.visible = value
 
@@ -78,13 +85,13 @@ func hide_overlay() -> void:
 
 func show_win(duration: float, mistakes: int) -> void:
     _overlay_mode = "win"
-    _overlay_title.text = "FLOW CLEARED"
+    _overlay_title.text = tr("UI_FLOW_CLEARED")
     if mistakes == 0:
-        _overlay_subtitle.text = "Perfect routing  •  %.1fs" % duration
+        _overlay_subtitle.text = tr("UI_PERFECT_ROUTING") % duration
     else:
-        _overlay_subtitle.text = "%s  •  %.1fs" % ["1 recovery" if mistakes == 1 else "%d recoveries" % mistakes, duration]
-    _overlay_primary.text = "NEXT LEVEL"
-    _overlay_secondary.text = "REPLAY"
+        _overlay_subtitle.text = tr("UI_RESULT_FORMAT") % [tr("UI_RECOVERY_ONE") if mistakes == 1 else tr("UI_RECOVERY_MANY") % mistakes, duration]
+    _overlay_primary.text = tr("UI_NEXT_LEVEL")
+    _overlay_secondary.text = tr("UI_REPLAY")
     _overlay_secondary.visible = true
     _settings_row.visible = false
     _debug_row.visible = false
@@ -92,9 +99,9 @@ func show_win(duration: float, mistakes: int) -> void:
 
 func show_fail(reason: String) -> void:
     _overlay_mode = "fail"
-    _overlay_title.text = "BUFFER FULL"
+    _overlay_title.text = tr("UI_BUFFER_FULL")
     _overlay_subtitle.text = reason
-    _overlay_primary.text = "TRY AGAIN"
+    _overlay_primary.text = tr("UI_TRY_AGAIN")
     _overlay_secondary.visible = false
     _settings_row.visible = false
     _debug_row.visible = false
@@ -102,10 +109,10 @@ func show_fail(reason: String) -> void:
 
 func show_pause() -> void:
     _overlay_mode = "pause"
-    _overlay_title.text = "PAUSED"
-    _overlay_subtitle.text = "Plan the next switches before the line starts moving again."
-    _overlay_primary.text = "RESUME"
-    _overlay_secondary.text = "RESTART LEVEL"
+    _overlay_title.text = tr("UI_PAUSED")
+    _overlay_subtitle.text = tr("UI_PAUSE_HINT")
+    _overlay_primary.text = tr("UI_RESUME")
+    _overlay_secondary.text = tr("UI_RESTART_LEVEL")
     _overlay_secondary.visible = true
     _settings_row.visible = true
     _debug_row.visible = OS.is_debug_build()
@@ -117,7 +124,7 @@ func _show_overlay() -> void:
     _overlay.visible = true
     _overlay.scale = Vector2(0.94, 0.94)
     _overlay.modulate.a = 0.0
-    var tween := _overlay.create_tween()
+    var tween := Motion.tween(_overlay)
     tween.set_parallel(true)
     tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
     tween.tween_property(_overlay, "scale", Vector2.ONE, 0.20)
@@ -147,8 +154,49 @@ func _toggle_haptic() -> void:
     _refresh_setting_buttons()
 
 func _refresh_setting_buttons() -> void:
-    _sound_button.text = "SOUND  %s" % ("ON" if SaveService.audio_enabled else "OFF")
-    _haptic_button.text = "HAPTIC  %s" % ("ON" if SaveService.haptic_enabled else "OFF")
+    _sound_button.text = tr("UI_SOUND") % (tr("UI_ON") if SaveService.audio_enabled else tr("UI_OFF"))
+    _haptic_button.text = tr("UI_HAPTIC") % (tr("UI_ON") if SaveService.haptic_enabled else tr("UI_OFF"))
+    _motion_button.text = tr("UI_REDUCED_MOTION") % (tr("UI_REDUCED") if SaveService.reduced_motion else tr("UI_FULL"))
+    _text_button.text = tr("UI_TEXT_SIZE") % (tr("UI_LARGE") if SaveService.large_text else tr("UI_NORMAL"))
+    _speed_button.text = tr("UI_GAME_SPEED") % ("%d%%" % roundi(SaveService.game_speed * 100.0))
+
+
+func _make_setting_button(handler: Callable) -> Button:
+    var button := Button.new()
+    button.custom_minimum_size = Vector2(245, 58)
+    button.add_theme_font_size_override("font_size", _font_size(18))
+    _style_button(button, false)
+    button.pressed.connect(handler)
+    _settings_row.add_child(button)
+    return button
+
+
+func _toggle_reduced_motion() -> void:
+    AudioService.play("ui", 1.0, -8.0)
+    SaveService.set_reduced_motion(not SaveService.reduced_motion)
+    _refresh_setting_buttons()
+
+
+func _toggle_large_text() -> void:
+    AudioService.play("ui", 1.0, -8.0)
+    SaveService.set_large_text(not SaveService.large_text)
+    _refresh_setting_buttons()
+    text_scale_changed.emit()
+
+
+func _cycle_game_speed() -> void:
+    AudioService.play("ui", 1.0, -8.0)
+    var options: Array = SaveService.SPEED_OPTIONS
+    var index := options.find(SaveService.game_speed)
+    SaveService.set_game_speed(float(options[(index + 1) % options.size()]))
+    _refresh_setting_buttons()
+    game_speed_changed.emit()
+
+
+# Font sizes are authored at the default scale and multiplied here, so the
+# large-text setting reaches every label instead of a chosen few.
+func _font_size(base: int) -> int:
+    return int(round(float(base) * SaveService.text_scale()))
 
 func _build() -> void:
     var root := Control.new()
@@ -172,18 +220,18 @@ func _build() -> void:
     top.add_child(top_box)
 
     _level_label = Label.new()
-    _level_label.text = "LEVEL 01"
+    _level_label.text = tr("UI_LEVEL_FORMAT") % [1, ""]
     _level_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
     _level_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-    _level_label.add_theme_font_size_override("font_size", 25)
+    _level_label.add_theme_font_size_override("font_size", _font_size(25))
     _level_label.add_theme_color_override("font_color", Color("#203044"))
     top_box.add_child(_level_label)
 
     var restart := Button.new()
     restart.text = "↻"
-    restart.tooltip_text = "Restart"
+    restart.tooltip_text = tr("UI_RESTART_TOOLTIP")
     restart.custom_minimum_size = Vector2(64, 64)
-    restart.add_theme_font_size_override("font_size", 29)
+    restart.add_theme_font_size_override("font_size", _font_size(29))
     _style_button(restart, false)
     restart.pressed.connect(func() -> void:
         AudioService.play("ui", 0.92, -8.0)
@@ -193,9 +241,9 @@ func _build() -> void:
 
     var pause := Button.new()
     pause.text = "Ⅱ"
-    pause.tooltip_text = "Pause"
+    pause.tooltip_text = tr("UI_PAUSE_TOOLTIP")
     pause.custom_minimum_size = Vector2(64, 64)
-    pause.add_theme_font_size_override("font_size", 23)
+    pause.add_theme_font_size_override("font_size", _font_size(23))
     _style_button(pause, false)
     pause.pressed.connect(func() -> void:
         AudioService.play("ui", 1.0, -8.0)
@@ -216,8 +264,8 @@ func _build() -> void:
     upcoming.add_child(upcoming_row)
 
     var next_label := Label.new()
-    next_label.text = "NEXT"
-    next_label.add_theme_font_size_override("font_size", 17)
+    next_label.text = tr("UI_NEXT")
+    next_label.add_theme_font_size_override("font_size", _font_size(17))
     next_label.add_theme_color_override("font_color", Color("#46596A"))
     upcoming_row.add_child(next_label)
 
@@ -236,8 +284,8 @@ func _build() -> void:
     _tutorial_label = Label.new()
     _tutorial_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     _tutorial_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-    _tutorial_label.text = "TAP THE GLOWING SWITCH"
-    _tutorial_label.add_theme_font_size_override("font_size", 18)
+    _tutorial_label.text = tr("UI_TUTORIAL_TAP")
+    _tutorial_label.add_theme_font_size_override("font_size", _font_size(18))
     _tutorial_label.add_theme_color_override("font_color", Color.WHITE)
     _tutorial.add_child(_tutorial_label)
     _tutorial.visible = false
@@ -260,9 +308,9 @@ func _build() -> void:
     _buffer_panel.add_child(buffer_v)
 
     var buffer_title := Label.new()
-    buffer_title.text = "WAITING BUFFER"
+    buffer_title.text = tr("UI_WAITING_BUFFER")
     buffer_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    buffer_title.add_theme_font_size_override("font_size", 18)
+    buffer_title.add_theme_font_size_override("font_size", _font_size(18))
     buffer_title.add_theme_color_override("font_color", Color("#3D4F5E"))
     buffer_v.add_child(buffer_title)
 
@@ -303,7 +351,7 @@ func _build() -> void:
 
     _overlay_title = Label.new()
     _overlay_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    _overlay_title.add_theme_font_size_override("font_size", 42)
+    _overlay_title.add_theme_font_size_override("font_size", _font_size(42))
     _overlay_title.add_theme_color_override("font_color", Color("#203044"))
     overlay_v.add_child(_overlay_title)
 
@@ -311,28 +359,34 @@ func _build() -> void:
     _overlay_subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     _overlay_subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
     _overlay_subtitle.custom_minimum_size = Vector2(0, 84)
-    _overlay_subtitle.add_theme_font_size_override("font_size", 21)
+    _overlay_subtitle.add_theme_font_size_override("font_size", _font_size(21))
     _overlay_subtitle.add_theme_color_override("font_color", Color("#667B8E"))
     overlay_v.add_child(_overlay_subtitle)
 
-    _settings_row = HBoxContainer.new()
-    _settings_row.alignment = BoxContainer.ALIGNMENT_CENTER
-    _settings_row.add_theme_constant_override("separation", 12)
+    # Five settings do not fit on one row at portrait width, so they wrap.
+    _settings_row = GridContainer.new()
+    _settings_row.columns = 2
+    _settings_row.add_theme_constant_override("h_separation", 12)
+    _settings_row.add_theme_constant_override("v_separation", 10)
     overlay_v.add_child(_settings_row)
 
     _sound_button = Button.new()
     _sound_button.custom_minimum_size = Vector2(245, 58)
-    _sound_button.add_theme_font_size_override("font_size", 18)
+    _sound_button.add_theme_font_size_override("font_size", _font_size(18))
     _style_button(_sound_button, false)
     _sound_button.pressed.connect(_toggle_audio)
     _settings_row.add_child(_sound_button)
 
     _haptic_button = Button.new()
     _haptic_button.custom_minimum_size = Vector2(245, 58)
-    _haptic_button.add_theme_font_size_override("font_size", 18)
+    _haptic_button.add_theme_font_size_override("font_size", _font_size(18))
     _style_button(_haptic_button, false)
     _haptic_button.pressed.connect(_toggle_haptic)
     _settings_row.add_child(_haptic_button)
+
+    _motion_button = _make_setting_button(_toggle_reduced_motion)
+    _text_button = _make_setting_button(_toggle_large_text)
+    _speed_button = _make_setting_button(_cycle_game_speed)
 
     _debug_row = HBoxContainer.new()
     _debug_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -340,31 +394,31 @@ func _build() -> void:
     overlay_v.add_child(_debug_row)
 
     var prev := Button.new()
-    prev.text = "DEBUG  PREV LEVEL"
+    prev.text = tr("UI_DEBUG_PREV")
     prev.custom_minimum_size = Vector2(245, 52)
-    prev.add_theme_font_size_override("font_size", 16)
+    prev.add_theme_font_size_override("font_size", _font_size(16))
     _style_button(prev, false)
     prev.pressed.connect(func() -> void: debug_previous_requested.emit())
     _debug_row.add_child(prev)
 
     var next := Button.new()
-    next.text = "DEBUG  NEXT LEVEL"
+    next.text = tr("UI_DEBUG_NEXT")
     next.custom_minimum_size = Vector2(245, 52)
-    next.add_theme_font_size_override("font_size", 16)
+    next.add_theme_font_size_override("font_size", _font_size(16))
     _style_button(next, false)
     next.pressed.connect(func() -> void: debug_next_requested.emit())
     _debug_row.add_child(next)
 
     _overlay_primary = Button.new()
     _overlay_primary.custom_minimum_size = Vector2(0, 76)
-    _overlay_primary.add_theme_font_size_override("font_size", 24)
+    _overlay_primary.add_theme_font_size_override("font_size", _font_size(24))
     _style_button(_overlay_primary, true)
     _overlay_primary.pressed.connect(_on_overlay_primary)
     overlay_v.add_child(_overlay_primary)
 
     _overlay_secondary = Button.new()
     _overlay_secondary.custom_minimum_size = Vector2(0, 62)
-    _overlay_secondary.add_theme_font_size_override("font_size", 20)
+    _overlay_secondary.add_theme_font_size_override("font_size", _font_size(20))
     _style_button(_overlay_secondary, false)
     _overlay_secondary.pressed.connect(_on_overlay_secondary)
     overlay_v.add_child(_overlay_secondary)

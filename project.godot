@@ -44,6 +44,11 @@ project/assembly_name="Flow Factory"
 
 pointing/emulate_touch_from_mouse=true
 
+[internationalization]
+
+locale/translations=PackedStringArray("res://localisation/strings.en.translation", "res://localisation/strings.vi.translation")
+locale/fallback="en"
+
 [rendering]
 
 renderer/rendering_method="mobile"

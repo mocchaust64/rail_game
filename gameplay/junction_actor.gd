@@ -53,12 +53,12 @@ func _perform_toggle() -> void:
     HapticService.light()
 
     if _base_disc != null:
-        var press_tween := _base_disc.create_tween()
+        var press_tween := Motion.tween(_base_disc)
         press_tween.tween_property(_base_disc, "scale", Vector3(0.93, 0.82, 0.93), 0.055)
         press_tween.tween_property(_base_disc, "scale", Vector3.ONE, 0.085)
 
     var target_angle := _target_angle()
-    var tween := create_tween()
+    var tween := Motion.tween(self)
     tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
     tween.tween_property(_pointer, "rotation:y", target_angle, 0.145)
     tween.finished.connect(_on_toggle_finished)
