@@ -18,7 +18,12 @@ func _ready() -> void:
 
     var viewport_size := rig.camera.get_viewport().get_visible_rect().size
     for level_number in LEVELS:
-        _check_level(rig, level_number, viewport_size, failures)
+        _check_level(rig, level_number, viewport_size, failures, true)
+
+    viewport.size = Vector2i(1080, 2400)
+    viewport_size = rig.camera.get_viewport().get_visible_rect().size
+    for level_number in LEVELS:
+        _check_level(rig, level_number, viewport_size, failures, false)
 
     viewport.remove_child(rig)
     rig.free()
@@ -34,7 +39,7 @@ func _ready() -> void:
     get_tree().quit(1)
 
 
-func _check_level(rig: SceneRig, level_number: int, viewport_size: Vector2, failures: Array[String]) -> void:
+func _check_level(rig: SceneRig, level_number: int, viewport_size: Vector2, failures: Array[String], require_close_frame: bool) -> void:
     var file := FileAccess.open("res://levels/level_%02d.json" % level_number, FileAccess.READ)
     var level: Dictionary = JSON.parse_string(file.get_as_text())
     var positions: Dictionary = {}
@@ -61,5 +66,5 @@ func _check_level(rig: SceneRig, level_number: int, viewport_size: Vector2, fail
                     if screen.x < SCREEN_MARGIN or screen.x > viewport_size.x - SCREEN_MARGIN or screen.y < SCREEN_MARGIN or screen.y > viewport_size.y - SCREEN_MARGIN:
                         failures.append("level %d %s projects outside the safe frame at %s" % [level_number, node["id"], screen])
     var vertical_coverage := (max_screen_y - min_screen_y) / viewport_size.y
-    if vertical_coverage < 0.55:
+    if require_close_frame and vertical_coverage < 0.55:
         failures.append("level %d fills only %.1f%% of portrait height" % [level_number, vertical_coverage * 100.0])

@@ -14,7 +14,7 @@ const SHADOW_NORMAL_BIAS := 0.72
 const SHADOW_MAX_DISTANCE := 42.0
 const AMBIENT_ENERGY := 0.62
 
-const CAMERA_FOV := 34.0
+const CAMERA_FOV := 19.5
 const CAMERA_POSITION := Vector3(0.0, 16.2, 12.6)
 const CAMERA_TARGET := Vector3(0, 0.25, 0.15)
 const FRAME_WIDTH := 6.4
@@ -43,6 +43,7 @@ func _ready() -> void:
     camera = Camera3D.new()
     camera.name = "GameCamera"
     camera.projection = Camera3D.PROJECTION_PERSPECTIVE
+    camera.keep_aspect = Camera3D.KEEP_WIDTH
     camera.fov = CAMERA_FOV
     camera.position = _base_camera_position
     add_child(camera)
