@@ -4,24 +4,14 @@ extends Node3D
 enum GameState { BOOT, LEVEL_LOADING, READY, PLAYING, PAUSED, FAILED, COMPLETED }
 
 const LEVEL_COUNT := 10
-# Ceiling on simultaneous cargo nodes. Levels spawn far fewer; this only bounds
-# the pool so a pathological level cannot allocate without limit.
 const MAX_POOLED_ITEMS := 24
 
-# Feedback weights. Trauma is on a 0..1 scale; a correct delivery should barely
-# register while a failure should be unmistakable.
 const TRAUMA_CORRECT := 0.12
 const TRAUMA_WRONG := 0.40
 const TRAUMA_FAIL := 0.85
 const HITSTOP_WRONG := 0.07
 const HITSTOP_FAIL := 0.16
-# Tap tolerance around a junction, in board units rather than pixels. Under the
-# perspective camera a fixed pixel radius would make distant junctions feel
-# oversized to tap and near ones undersized, so it is converted per junction.
-# 0.95 units reproduces the 118 pixel radius the orthographic camera had.
 const TAP_RADIUS_UNITS := 0.95
-
-
 const SOURCE_CLEAR_PROGRESS := 0.38
 
 var state: GameState = GameState.BOOT
@@ -51,15 +41,14 @@ var _junction_taps: int = 0
 var _empty_hold: float = 0.0
 var _tutorial_junction: JunctionActor
 
+
 func _ready() -> void:
     _setup_scene()
     current_level_number = clamp(SaveService.highest_unlocked_level, 1, LEVEL_COUNT)
     load_level(current_level_number)
 
+
 func _setup_scene() -> void:
-    # Camera, lights and environment live in SceneRig: none of that depends on
-    # the rules of the game, and keeping it here is what made this file a
-    # dumping ground.
     _rig = SceneRig.new()
     _rig.name = "SceneRig"
     add_child(_rig)
@@ -102,14 +91,14 @@ func load_level(level_number: int) -> void:
     state = GameState.PLAYING
     AnalyticsService.track("level_start", {"level": current_level_number, "attempt": _attempt})
 
+
 func _handle_level_error(message: String) -> void:
     push_error(message)
     state = GameState.FAILED
     _hud.show_fail("This level could not be loaded. Check the Godot output log.")
 
+
 func _clear_runtime() -> void:
-    # Leaving a hitstop running across a level change would strand the game in
-    # slow motion with nothing left to end it.
     Engine.time_scale = 1.0
     _hitstop_remaining = 0.0
     if _tutorial_junction != null and is_instance_valid(_tutorial_junction):
@@ -126,8 +115,8 @@ func _clear_runtime() -> void:
     positions.clear()
     _spawn_index = 0
     _buffer_chute = null
-    # Every world child was just freed, so the pool's nodes are gone with them.
     _item_pool = null
+
 
 func _build_level() -> void:
     var built := LevelBuilder.build(level, _world, MAX_POOLED_ITEMS)
@@ -149,16 +138,14 @@ func _setup_tutorial_hint() -> void:
     _tutorial_junction.set_hint_active(true)
     _hud.set_tutorial_visible(true)
 
+
 func _process(delta: float) -> void:
     if _hitstop_remaining > 0.0:
-        # Counted in real time so the freeze is not slowed by itself.
         _hitstop_remaining -= delta / maxf(0.05, Engine.time_scale)
         if _hitstop_remaining <= 0.0:
             Engine.time_scale = 1.0
 
 
-# A very short slow-down on impact. Reduced motion skips it: it is motion the
-# player did not ask for and it interrupts input.
 func _hitstop(seconds: float) -> void:
     if SaveService.reduced_motion:
         return
@@ -170,12 +157,11 @@ func _physics_process(delta: float) -> void:
     if state != GameState.PLAYING:
         return
     _elapsed += delta
-    # Returning cargo gets first claim on a newly-open source slot. This prevents an unfair
-    # buffer-full loss on the exact frame a slot should have returned to the line.
     _update_buffer()
     _update_spawning(delta)
     _update_items(delta)
     _check_win(delta)
+
 
 func _update_spawning(delta: float) -> void:
     if _spawn_index >= level["spawns"].size():
@@ -195,6 +181,7 @@ func _update_spawning(delta: float) -> void:
     _spawn_index += 1
     _refresh_upcoming()
     _spawn_item(String(spawn["kind"]), source_id, false)
+
 
 func _spawn_item(kind: String, source_id: String, returning: bool) -> void:
     if state != GameState.PLAYING or not nodes_by_id.has(source_id):
@@ -220,6 +207,7 @@ func _spawn_item(kind: String, source_id: String, returning: bool) -> void:
     else:
         AudioService.play("spawn", 1.0, -13.0)
 
+
 func _can_spawn_from_source(source_id: String) -> bool:
     for item in active_items:
         if not is_instance_valid(item):
@@ -228,6 +216,7 @@ func _can_spawn_from_source(source_id: String) -> bool:
             return false
     return true
 
+
 func _update_items(delta: float) -> void:
     for item in active_items.duplicate():
         if not is_instance_valid(item):
@@ -235,6 +224,7 @@ func _update_items(delta: float) -> void:
             continue
         if item.advance(delta):
             _on_item_reached_node(item)
+
 
 func _on_item_reached_node(item: ItemActor) -> void:
     var arrived_id := item.to_id
@@ -255,9 +245,8 @@ func _on_item_reached_node(item: ItemActor) -> void:
     if next_id.is_empty():
         _fail("Cargo reached a dead end.")
         return
-    # The route is committed at this exact moment. A later junction tap only affects
-    # cargo that has not yet reached this node.
     item.start_segment(arrived_id, next_id, positions[arrived_id], positions[next_id])
+
 
 func _route_from(node_id: String) -> String:
     var node: Dictionary = nodes_by_id[node_id]
@@ -265,6 +254,7 @@ func _route_from(node_id: String) -> String:
         var junction := junctions[node_id] as JunctionActor
         return junction.current_output()
     return String(node.get("next", ""))
+
 
 func _deliver_item(item: ItemActor, receiver_id: String) -> void:
     active_items.erase(item)
@@ -276,6 +266,7 @@ func _deliver_item(item: ItemActor, receiver_id: String) -> void:
     _rig.add_trauma(TRAUMA_CORRECT)
     VisualFactory.burst(_world, positions[receiver_id] + Vector3(0, 1.0, 0), VisualFactory.kind_color(item.kind), 26, 3.2)
     item.animate_delivered()
+
 
 func _buffer_item(item: ItemActor, receiver_id: String) -> void:
     active_items.erase(item)
@@ -307,10 +298,12 @@ func _buffer_item(item: ItemActor, receiver_id: String) -> void:
     _refresh_buffer_ui()
     _hud.flash_buffer()
 
+
 func _buffer_target_position() -> Vector3:
     if _buffer_chute != null and is_instance_valid(_buffer_chute):
         return _buffer_chute.global_position + Vector3(0, 0.70, 0)
-    return Vector3(3.7, 0.7, -4.8)
+    return Vector3(0.0, 0.7, 6.35)
+
 
 func _update_buffer() -> void:
     if buffered.is_empty():
@@ -325,11 +318,13 @@ func _update_buffer() -> void:
     _refresh_buffer_ui()
     _spawn_item(String(entry["kind"]), source_id, true)
 
+
 func _refresh_buffer_ui() -> void:
     var kinds: Array = []
     for entry in buffered:
         kinds.append(String(entry["kind"]))
     _hud.set_buffer(kinds, int(level["buffer_capacity"]))
+
 
 func _refresh_upcoming() -> void:
     var kinds: Array = []
@@ -340,25 +335,30 @@ func _refresh_upcoming() -> void:
     _hud.set_upcoming(kinds)
     _refresh_source_previews(spawns)
 
+
 func _refresh_source_previews(spawns: Array) -> void:
-    # In two-source levels the global NEXT row alone is ambiguous. Showing the next piece
-    # physically above each hopper preserves planning and prevents the game becoming reflex-based.
+    # Put the real future sequence directly onto each source's physical feeder.
+    # The reference video shows many balls waiting in the world, so planning no
+    # longer depends on a floating NEXT card.
+    var queues: Dictionary = {}
     for source_id in sources:
-        var source := sources[source_id] as SourceActor
-        source.set_preview("")
+        queues[source_id] = []
+
     for i in range(_spawn_index, spawns.size()):
         var entry: Dictionary = spawns[i]
         var source_id := String(entry["source"])
         if not sources.has(source_id):
             continue
-        var source := sources[source_id] as SourceActor
-        if source.has_meta("preview_assigned"):
+        var queue: Array = queues[source_id]
+        if queue.size() >= SourceActor.MAX_VISIBLE_QUEUE:
             continue
-        source.set_preview(String(entry["kind"]))
-        source.set_meta("preview_assigned", true)
+        queue.append(String(entry["kind"]))
+        queues[source_id] = queue
+
     for source_id in sources:
         var source := sources[source_id] as SourceActor
-        source.remove_meta("preview_assigned")
+        source.set_preview_queue(queues[source_id] as Array)
+
 
 func _check_win(delta: float) -> void:
     if state != GameState.PLAYING:
@@ -384,6 +384,7 @@ func _check_win(delta: float) -> void:
     })
     _hud.show_win(_elapsed, _mistakes)
 
+
 func _fail(reason: String) -> void:
     if state != GameState.PLAYING:
         return
@@ -401,6 +402,7 @@ func _fail(reason: String) -> void:
         "attempt": _attempt,
     })
     _hud.show_fail(reason)
+
 
 func _unhandled_input(event: InputEvent) -> void:
     if state != GameState.PLAYING:
@@ -430,8 +432,6 @@ func _unhandled_input(event: InputEvent) -> void:
         var radius_px := screen_radius(_camera, anchor, TAP_RADIUS_UNITS)
         if radius_px <= 0.0:
             continue
-        # Scored as a fraction of each junction's own radius so junctions at
-        # different depths compete fairly.
         var score := projected.distance_to(screen_pos) / radius_px
         if score < best_score:
             best = junction
@@ -454,9 +454,11 @@ func _unhandled_input(event: InputEvent) -> void:
         "state": best.state,
     })
 
+
 func _on_restart_requested() -> void:
     _attempt += 1
     load_level(current_level_number)
+
 
 func _on_next_requested() -> void:
     _attempt = 1
@@ -465,6 +467,7 @@ func _on_next_requested() -> void:
     else:
         load_level(current_level_number + 1)
 
+
 func _on_pause_requested() -> void:
     if state != GameState.PLAYING:
         return
@@ -472,11 +475,13 @@ func _on_pause_requested() -> void:
     AnalyticsService.track("level_pause", {"level": current_level_number, "duration": snapped(_elapsed, 0.01)})
     _hud.show_pause()
 
+
 func _on_resume_requested() -> void:
     if state != GameState.PAUSED:
         return
     state = GameState.PLAYING
     _hud.hide_overlay()
+
 
 func _on_debug_previous() -> void:
     if not OS.is_debug_build():
@@ -484,21 +489,19 @@ func _on_debug_previous() -> void:
     _attempt = 1
     load_level(max(1, current_level_number - 1))
 
+
 func _on_debug_next() -> void:
     if not OS.is_debug_build():
         return
     _attempt = 1
     load_level(min(LEVEL_COUNT, current_level_number + 1))
 
+
 func _notification(what: int) -> void:
     if what == NOTIFICATION_APPLICATION_PAUSED and state == GameState.PLAYING:
         call_deferred("_on_pause_requested")
 
 
-
-# Pixel radius that `units` board units covers at this world position, measured by
-# projecting a point that far to the camera's right. Static so it can be tested
-# against a camera built from the same constants.
 static func screen_radius(camera: Camera3D, anchor: Vector3, units: float) -> float:
     var edge := anchor + camera.global_transform.basis.x * units
     return camera.unproject_position(anchor).distance_to(camera.unproject_position(edge))
