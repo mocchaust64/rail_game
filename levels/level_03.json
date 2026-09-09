@@ -36,7 +36,8 @@
       "id": "NM",
       "pos": [1.75, -0.15],
       "type": "normal",
-      "next": "J2"
+      "next": "J2",
+      "visual": "processor"
     },
     {
       "id": "J2",
