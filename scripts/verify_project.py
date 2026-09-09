@@ -23,6 +23,7 @@ def check_required_files() -> None:
         "gameplay/item_actor.gd", "gameplay/junction_actor.gd",
         "gameplay/receiver_actor.gd", "gameplay/source_actor.gd",
         "gameplay/visual_factory.gd", "gameplay/machine_visuals.gd",
+        "gameplay/processor_visual.gd", "gameplay/track_motion.gd",
         "gameplay/level_validator.gd", "gameplay/track_geometry.gd",
         "gameplay/track_visuals.gd", "ui/hud.gd", "ui/cargo_icon.gd",
         "services/save_service.gd", "services/audio_service.gd",
@@ -52,8 +53,10 @@ def check_resource_paths() -> None:
 def check_custom_gameplay_visuals() -> None:
     core = [
         ROOT / "gameplay" / "track_visuals.gd",
+        ROOT / "gameplay" / "track_motion.gd",
         ROOT / "gameplay" / "junction_actor.gd",
         ROOT / "gameplay" / "machine_visuals.gd",
+        ROOT / "gameplay" / "processor_visual.gd",
         ROOT / "gameplay" / "visual_factory.gd",
         ROOT / "gameplay" / "source_actor.gd",
     ]
@@ -174,6 +177,7 @@ def main() -> int:
     print(" - every spawn kind can reach a matching receiver")
     print(" - bundled audio present")
     print(" - gameplay visuals use only custom generated geometry")
+    print(" - moving rail and custom processor files present")
     return 0
 
 if __name__ == "__main__":
