@@ -1,9 +1,6 @@
 class_name VisualFactory
 extends RefCounted
 
-# Reference-video visual pass: warm full-bleed toy yard, dark chunky conveyors,
-# glossy ball cargo and colour-coded destination machines. Gameplay remains
-# deterministic; this file only changes what those rules look like.
 const PALETTE_PATH := "res://assets/palette/toy_factory.tres"
 static var palette: ToyFactoryPalette = load(PALETTE_PATH)
 
@@ -22,13 +19,8 @@ static var YELLOW: Color = palette.cargo_yellow
 static var GREEN_ACCENT: Color = palette.accent_green
 static var ORANGE_ACCENT: Color = palette.accent_orange
 
-# Environment-only CC0 props kept from the audited KayKit integration.
-const KAYKIT_PALLET = preload("res://assets/vendor/kaykit_prototype_bits/Pallet_Large_CC0_Derived.obj")
-const KAYKIT_BARREL = preload("res://assets/vendor/kaykit_prototype_bits/Barrel_A_CC0_Derived.obj")
-const KAYKIT_LOADED_PALLET = preload("res://assets/vendor/kaykit_prototype_bits/Pallet_Loaded_CC0_Derived.obj")
-
 const DECOR_GROUP := "decoration"
-const DECOR_CLEARANCE := 1.8
+const DECOR_CLEARANCE := 1.55
 
 static var _material_cache: Dictionary = {}
 
@@ -60,23 +52,14 @@ static func create_floor(parent: Node3D, occupied: Array = []) -> Node3D:
     root.name = "ReferenceToyYard"
     parent.add_child(root)
 
-    # The reference does not read as a white board floating in space. The play
-    # surface and background are the same warm material, so the level fills the
-    # phone instead of looking like a prototype table.
-    var ground := _box(Vector3(11.6, 0.22, 16.8), FLOOR_COLOR, 0.92)
-    ground.position = Vector3(0, -0.26, 0)
+    # One uninterrupted cream play surface. There is deliberately no inset
+    # rectangle or board edge: the reference reads as one continuous toy yard.
+    var ground := _box(Vector3(14.0, 0.24, 19.0), Color("#F1E4D3"), 0.94)
+    ground.position = Vector3(0, -0.27, 0.25)
     ground.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     root.add_child(ground)
 
-    # A faint inset gives contact shadows something to sit on without drawing a
-    # visible rectangular frame around the level.
-    var inset := _box(Vector3(10.9, 0.035, 16.1), FLOOR_INSET, 0.98)
-    inset.position = Vector3(0, -0.135, 0)
-    inset.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-    root.add_child(inset)
-
-    _create_corner_scenery(root)
-    _create_decor(root, occupied)
+    _create_reference_decor(root, occupied)
     return root
 
 
@@ -84,135 +67,47 @@ static func create_kind_visual(kind: String, scale_value: float = 0.38) -> Node3
     var root := Node3D.new()
     root.name = "CargoBall_%s" % kind
 
-    # The reference uses one instantly readable toy: glossy coloured balls.
-    var ball := _sphere(scale_value, kind_color(kind), 0.26)
+    var ball := _sphere(scale_value, kind_color(kind), 0.22)
     ball.position.y = 0.02
     root.add_child(ball)
 
-    # Small white top glyph keeps the original colour+shape accessibility
-    # contract without changing the ball silhouette at gameplay distance.
-    var glyph: MeshInstance3D
-    match kind:
-        "blue":
-            glyph = _box(Vector3(scale_value * 0.34, scale_value * 0.045, scale_value * 0.34), Color(1, 1, 1, 0.88), 0.35)
-        "yellow":
-            glyph = _cylinder(scale_value * 0.22, scale_value * 0.05, Color(1, 1, 1, 0.88), 0.35, 0.0, 0.0, 3)
-        _:
-            glyph = _cylinder(scale_value * 0.18, scale_value * 0.05, Color(1, 1, 1, 0.88), 0.35)
-    glyph.position = Vector3(0, scale_value * 0.93, 0)
-    root.add_child(glyph)
-
-    var shine := _sphere(scale_value * 0.105, Color(1, 1, 1, 0.72), 0.18)
-    shine.position = Vector3(-scale_value * 0.24, scale_value * 0.26, -scale_value * 0.20)
+    # A small specular bead gives the same glossy toy read as the target video
+    # without drawing a large accessibility icon over the ball surface.
+    var shine := _sphere(scale_value * 0.095, Color(1, 1, 1, 0.76), 0.12)
+    shine.position = Vector3(-scale_value * 0.25, scale_value * 0.28, -scale_value * 0.19)
     root.add_child(shine)
     return root
 
 
+# Compatibility entry points. Active gameplay actors call MachineVisuals
+# directly, but keeping these avoids breaking older test scenes.
 static func create_source_shell(parent: Node3D) -> Node3D:
-    var root := Node3D.new()
-    root.name = "SourceShell"
-    parent.add_child(root)
-
-    var body := _rounded_machine_body(Vector3(1.45, 0.92, 1.36), BLUE, 0.52)
-    body.position.y = 0.43
-    root.add_child(body)
-
-    # Keep this as child index 1: SourceActor intentionally reads the launch
-    # ring from the second child for its idle pulse.
-    var ring := _cylinder(0.43, 0.10, Color("#D9DEE0"), 0.30, 0.0, 0.18)
-    ring.position.y = 0.98
-    root.add_child(ring)
-
-    var well := _cylinder(0.29, 0.07, MACHINE_DARK, 0.48)
-    well.position.y = 1.04
-    root.add_child(well)
-
-    var mouth := _box(Vector3(0.72, 0.40, 0.13), MACHINE_DARK, 0.50)
-    mouth.position = Vector3(0, 0.42, 0.68)
-    root.add_child(mouth)
-
-    var lever := _cylinder(0.055, 0.50, Color("#66727A"), 0.36, 0.0, 0.20)
-    lever.position = Vector3(0.70, 0.72, 0.0)
-    root.add_child(lever)
-    var knob := _sphere(0.11, BLUE, 0.24)
-    knob.position = Vector3(0.70, 1.00, 0.0)
-    root.add_child(knob)
-    return root
+    return MachineVisuals.create_source_shell(parent)
 
 
 static func create_receiver_shell(parent: Node3D, kind: String) -> Dictionary:
-    var root := Node3D.new()
-    root.name = "ReceiverShell_%s" % kind
-    parent.add_child(root)
-
-    var colour := kind_color(kind)
-    var base := _box(Vector3(1.62, 0.16, 1.52), Color("#565C60"), 0.62)
-    base.position.y = 0.04
-    root.add_child(base)
-
-    var body := _rounded_machine_body(Vector3(1.46, 0.94, 1.34), colour, 0.48)
-    body.position.y = 0.52
-    root.add_child(body)
-
-    var mouth := _box(Vector3(0.80, 0.42, 0.14), Color("#34373A"), 0.48)
-    mouth.position = Vector3(0, 0.43, 0.72)
-    root.add_child(mouth)
-
-    # Coloured output tongue and white chevrons are one of the strongest visual
-    # anchors in the reference video.
-    var tongue := _box(Vector3(0.74, 0.075, 0.78), colour, 0.50)
-    tongue.position = Vector3(0, 0.09, 1.03)
-    root.add_child(tongue)
-    _create_chevron(root, 0.92)
-    _create_chevron(root, 1.13)
-
-    var label := Label3D.new()
-    label.text = kind.to_upper()
-    label.font_size = 72
-    label.pixel_size = 0.0042
-    label.modulate = Color.WHITE
-    label.outline_size = 8
-    label.outline_modulate = Color(0, 0, 0, 0.14)
-    label.position = Vector3(0, 0.94, 0.70)
-    label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-    root.add_child(label)
-
-    var badge_anchor := Node3D.new()
-    badge_anchor.position = Vector3(0, 1.13, 0)
-    root.add_child(badge_anchor)
-    var cap := _cylinder(0.23, 0.07, Color("#E4E1D7"), 0.28, 0.0, 0.12)
-    badge_anchor.add_child(cap)
-    var cap_dot := _sphere(0.13, colour, 0.24)
-    cap_dot.position.y = 0.075
-    badge_anchor.add_child(cap_dot)
-
-    var lever := _cylinder(0.05, 0.50, Color("#6C7276"), 0.38, 0.0, 0.18)
-    lever.position = Vector3(0.72, 0.72, 0.10)
-    root.add_child(lever)
-    var lamp := _sphere(0.11, colour, 0.24, 0.22)
-    lamp.position = Vector3(0.72, 1.00, 0.10)
-    root.add_child(lamp)
-
-    return {
-        "root": root,
-        "mouth": mouth,
-        "badge_anchor": badge_anchor,
-        "lamp": lamp,
-    }
+    return MachineVisuals.create_receiver_shell(parent, kind)
 
 
 static func create_buffer_chute(parent: Node3D) -> Node3D:
+    # The reference presents the buffer as a quiet row of circular sockets at
+    # the bottom of the world rather than a separate industrial chute.
     var root := Node3D.new()
-    root.name = "BufferChute"
-    root.position = Vector3(4.25, 0.0, -3.9)
+    root.name = "BufferSocketTray"
+    root.position = Vector3(0.0, 0.0, 6.35)
     parent.add_child(root)
 
-    var tray := _box(Vector3(1.10, 0.14, 1.55), Color("#A9A9A3"), 0.62)
-    tray.position.y = 0.06
-    root.add_child(tray)
-    var inner := _box(Vector3(0.82, 0.08, 1.30), Color("#5A5A57"), 0.68)
-    inner.position.y = 0.16
-    root.add_child(inner)
+    var back := _box(Vector3(4.65, 0.08, 0.86), Color("#E4D5C3"), 0.92)
+    back.position.y = -0.01
+    root.add_child(back)
+
+    for x in [-1.72, -0.86, 0.0, 0.86, 1.72]:
+        var rim := _cylinder(0.34, 0.045, Color("#D4C3B0"), 0.88)
+        rim.position = Vector3(float(x), 0.055, 0)
+        root.add_child(rim)
+        var socket := _cylinder(0.285, 0.025, Color("#EEDFCF"), 0.96)
+        socket.position = Vector3(float(x), 0.085, 0)
+        root.add_child(socket)
     return root
 
 
@@ -222,7 +117,7 @@ static func create_spark_burst(parent: Node3D, origin: Vector3, color: Color) ->
     parent.add_child(root)
     root.global_position = origin
     for i in range(9):
-        var spark := _sphere(0.055, color, 0.28, 0.30)
+        var spark := _sphere(0.055, color, 0.25, 0.24)
         root.add_child(spark)
         var angle := TAU * float(i) / 9.0
         var target := Vector3(cos(angle) * 0.68, 0.24 + float(i % 3) * 0.12, sin(angle) * 0.68)
@@ -240,12 +135,12 @@ static func create_win_confetti(parent: Node3D, origin: Vector3 = Vector3(0, 0.6
     parent.add_child(root)
     root.position = origin
     var colors: Array[Color] = [RED, BLUE, YELLOW, GREEN_ACCENT, ORANGE_ACCENT]
-    for i in range(24):
-        var piece := _box(Vector3(0.10, 0.04, 0.18), colors[i % colors.size()], 0.38)
+    for i in range(28):
+        var piece := _box(Vector3(0.10, 0.04, 0.18), colors[i % colors.size()], 0.35)
         root.add_child(piece)
-        var angle := TAU * float(i) / 24.0
-        var radius := 1.5 + float(i % 4) * 0.24
-        var target := Vector3(cos(angle) * radius, 1.0 + float(i % 5) * 0.22, sin(angle) * radius)
+        var angle := TAU * float(i) / 28.0
+        var radius := 1.6 + float(i % 4) * 0.24
+        var target := Vector3(cos(angle) * radius, 1.1 + float(i % 5) * 0.22, sin(angle) * radius)
         var tween := Motion.tween(piece)
         tween.set_parallel(true)
         tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
@@ -282,143 +177,117 @@ static func burst(parent: Node3D, world_position: Vector3, colour: Color, amount
     mesh.radial_segments = 6
     mesh.rings = 3
     particles.mesh = mesh
-    particles.material_override = material(colour, 0.28, 0.48)
+    particles.material_override = material(colour, 0.26, 0.42)
 
     parent.add_child(particles)
     particles.emitting = true
     parent.get_tree().create_timer(particles.lifetime + 0.2).timeout.connect(particles.queue_free)
 
 
-static func _create_chevron(parent: Node3D, z_value: float) -> void:
-    var left := _box(Vector3(0.10, 0.035, 0.32), Color.WHITE, 0.48)
-    left.position = Vector3(-0.10, 0.145, z_value)
-    left.rotation.y = -PI * 0.25
-    parent.add_child(left)
-    var right := _box(Vector3(0.10, 0.035, 0.32), Color.WHITE, 0.48)
-    right.position = Vector3(0.10, 0.145, z_value)
-    right.rotation.y = PI * 0.25
-    parent.add_child(right)
+static func _create_reference_decor(parent: Node3D, occupied: Array) -> void:
+    # Keep the middle clean like the reference. These 22 roots also preserve the
+    # existing decoration-clearance test contract while using only our own forms.
+    var tree_positions := [
+        Vector3(-5.65, -0.12, -7.55), Vector3(5.55, -0.12, -7.15),
+        Vector3(-5.55, -0.12, 7.45), Vector3(5.55, -0.12, 7.15),
+    ]
+    for p in tree_positions:
+        if _clears(p, occupied):
+            _add_decor(parent, _make_tree(p))
+
+    var crate_positions := [
+        Vector3(-5.15, -0.10, -4.55), Vector3(5.10, -0.10, -3.70),
+        Vector3(-5.25, -0.10, 3.15), Vector3(5.05, -0.10, 4.10),
+    ]
+    for p in crate_positions:
+        if _clears(p, occupied):
+            _add_decor(parent, _make_crate(p))
+
+    var barrier_positions := [Vector3(-4.75, -0.08, 1.00), Vector3(4.75, -0.08, 0.20)]
+    for i in range(barrier_positions.size()):
+        var p: Vector3 = barrier_positions[i]
+        if _clears(p, occupied):
+            var barrier := _make_barrier(p)
+            barrier.rotation.y = -0.18 if i == 0 else 0.16
+            _add_decor(parent, barrier)
+
+    var flower_positions := [
+        Vector3(-5.8, -0.10, -1.8), Vector3(-5.4, -0.10, -0.8),
+        Vector3(-5.7, -0.10, 2.0), Vector3(-5.1, -0.10, 5.3),
+        Vector3(5.7, -0.10, -2.1), Vector3(5.35, -0.10, -0.9),
+        Vector3(5.75, -0.10, 2.4), Vector3(5.25, -0.10, 5.4),
+        Vector3(-4.6, -0.10, -6.8), Vector3(4.6, -0.10, -6.5),
+        Vector3(-4.7, -0.10, 6.8), Vector3(4.7, -0.10, 6.6),
+    ]
+    for i in range(flower_positions.size()):
+        var p: Vector3 = flower_positions[i]
+        if _clears(p, occupied):
+            _add_decor(parent, _make_flower(p, i))
 
 
-# A rounded-looking toy block made from a central box and four vertical corner
-# cylinders. It stays cheap on mobile but removes the hard prototype-box read.
-static func _rounded_machine_body(size: Vector3, colour: Color, roughness: float) -> Node3D:
+static func _make_tree(pos: Vector3) -> Node3D:
     var root := Node3D.new()
-    var radius := minf(size.x, size.z) * 0.16
-
-    var centre := _box(Vector3(size.x - radius * 1.35, size.y, size.z), colour, roughness)
-    root.add_child(centre)
-    var cross := _box(Vector3(size.x, size.y, size.z - radius * 1.35), colour, roughness)
-    root.add_child(cross)
-
-    for sx in [-1.0, 1.0]:
-        for sz in [-1.0, 1.0]:
-            var corner := _cylinder(radius, size.y, colour, roughness)
-            corner.position = Vector3(
-                float(sx) * (size.x * 0.5 - radius),
-                0,
-                float(sz) * (size.z * 0.5 - radius)
-            )
-            root.add_child(corner)
+    root.position = pos
+    var island := _cylinder(0.82, 0.045, Color("#B5CF8A"), 0.94)
+    island.position.y = 0.03
+    root.add_child(island)
+    var trunk := _cylinder(0.10, 0.78, Color("#A77A58"), 0.82)
+    trunk.position = Vector3(0.08, 0.41, 0)
+    root.add_child(trunk)
+    var crown_low := _sphere(0.42, Color("#7EAE69"), 0.86)
+    crown_low.scale = Vector3(1.0, 0.86, 1.0)
+    crown_low.position = Vector3(0.08, 0.82, 0)
+    root.add_child(crown_low)
+    var crown_top := _sphere(0.32, Color("#70A15F"), 0.84)
+    crown_top.position = Vector3(0.02, 1.14, -0.03)
+    root.add_child(crown_top)
     return root
 
 
-static func _create_corner_scenery(parent: Node3D) -> void:
-    var green := Color("#91B970")
-    var trunk := Color("#9C7556")
-    var foliage := Color("#6E9D63")
-    var corners := [
-        Vector3(-5.15, -0.12, -7.35), Vector3(5.15, -0.12, -7.35),
-        Vector3(-5.15, -0.12, 7.35), Vector3(5.15, -0.12, 7.35),
-    ]
-    for p in corners:
-        var island := _cylinder(1.35, 0.06, green, 0.92)
-        island.position = p
-        parent.add_child(island)
-        var stem := _cylinder(0.11, 0.82, trunk, 0.82)
-        stem.position = p + Vector3(0.22 if p.x < 0 else -0.22, 0.42, 0.0)
-        parent.add_child(stem)
-        var crown := _sphere(0.48, foliage, 0.84)
-        crown.scale = Vector3(0.92, 1.18, 0.92)
-        crown.position = stem.position + Vector3(0, 0.58, 0)
-        parent.add_child(crown)
+static func _make_crate(pos: Vector3) -> Node3D:
+    var root := Node3D.new()
+    root.position = pos
+    root.rotation.y = pos.x * 0.035
+    var cube := _box(Vector3(0.72, 0.62, 0.72), Color("#D79C6A"), 0.78)
+    cube.position.y = 0.31
+    root.add_child(cube)
+    var plank_color := Color("#BC7D4F")
+    for y in [0.14, 0.48]:
+        var plank := _box(Vector3(0.78, 0.07, 0.08), plank_color, 0.74)
+        plank.position = Vector3(0, float(y), 0.38)
+        root.add_child(plank)
+    return root
 
 
-# The decor layout keeps the existing clearance contract: 22 grouped nodes are
-# present on every shipped level and a runtime filter drops any future overlap.
-const DECOR_VENDOR: Array = [
-    {"mesh": "loaded", "pos": Vector3(-4.12, -0.12, -3.25), "rot": 0.12, "scale": 0.215},
-    {"mesh": "loaded", "pos": Vector3(4.12, -0.12, 0.55), "rot": 3.2216, "scale": 0.195},
-    {"mesh": "pallet", "pos": Vector3(4.12, -0.12, -3.25), "rot": -0.08, "scale": 0.205},
-    {"mesh": "pallet", "pos": Vector3(-4.12, -0.12, 0.55), "rot": 3.2416, "scale": 0.205},
-    {"mesh": "barrel", "pos": Vector3(-4.12, 0.33, -1.95), "rot": 0.0, "scale": 0.82},
-    {"mesh": "barrel", "pos": Vector3(-4.12, 0.33, -1.20), "rot": 0.4, "scale": 0.82},
-    {"mesh": "barrel", "pos": Vector3(4.12, 0.33, -1.95), "rot": 0.0, "scale": 0.82},
-    {"mesh": "barrel", "pos": Vector3(4.12, 0.33, -1.20), "rot": 0.4, "scale": 0.82},
-]
+static func _make_barrier(pos: Vector3) -> Node3D:
+    var root := Node3D.new()
+    root.position = pos
+    for x in [-0.43, 0.43]:
+        var post := _cylinder(0.055, 0.62, Color("#72787A"), 0.48, 0.14)
+        post.position = Vector3(float(x), 0.31, 0)
+        root.add_child(post)
+    var beam := _box(Vector3(0.98, 0.16, 0.08), Color("#E5B445"), 0.46)
+    beam.position.y = 0.48
+    root.add_child(beam)
+    for x in [-0.28, 0.0, 0.28]:
+        var stripe := _box(Vector3(0.10, 0.17, 0.085), Color("#55595B"), 0.46)
+        stripe.position = Vector3(float(x), 0.48, 0.005)
+        stripe.rotation.z = -0.45
+        root.add_child(stripe)
+    return root
 
 
-static func _create_decor(parent: Node3D, occupied: Array) -> void:
-    var pallet_tint := Color("#C99B72")
-    var cargo_tint := Color("#D3B18C")
-    var barrel_tint := Color("#8EA9A9")
-
-    for entry in DECOR_VENDOR:
-        var spec: Dictionary = entry
-        var pos: Vector3 = spec["pos"]
-        if not _clears(pos, occupied):
-            continue
-        var resource: Resource = KAYKIT_BARREL
-        var tint := barrel_tint
-        match String(spec["mesh"]):
-            "loaded":
-                resource = KAYKIT_LOADED_PALLET
-                tint = cargo_tint
-            "pallet":
-                resource = KAYKIT_PALLET
-                tint = pallet_tint
-        var prop := _vendor_mesh(resource, tint, Vector3.ONE * float(spec["scale"]))
-        prop.position = pos
-        prop.rotation.y = float(spec["rot"])
-        _add_decor(parent, prop)
-
-    for x in [-3.72, 3.72]:
-        var tank_pos := Vector3(float(x), 0.42, 0.1)
-        if not _clears(tank_pos, occupied):
-            continue
-        var tank := _cylinder(0.34, 1.12, Color("#AAB6B7"), 0.70, 0.0, 0.04)
-        tank.position = tank_pos
-        _add_decor(parent, tank)
-        var tank_cap := _cylinder(0.20, 0.12, GREEN_ACCENT if x < 0 else ORANGE_ACCENT, 0.40, 0.14)
-        tank_cap.position = Vector3(float(x), 1.02, 0.1)
-        _add_decor(parent, tank_cap)
-
-    for x in [-3.45, 3.45]:
-        var inner := float(x + (0.72 if x < 0 else -0.72))
-        var post_a_pos := Vector3(float(x), 0.16, 6.35)
-        var post_b_pos := Vector3(inner, 0.16, 6.35)
-        if not _clears(post_a_pos, occupied) or not _clears(post_b_pos, occupied):
-            continue
-        var post_a := _box(Vector3(0.12, 0.52, 0.12), MACHINE_DARK, 0.68)
-        post_a.position = post_a_pos
-        _add_decor(parent, post_a)
-        var post_b := _box(Vector3(0.12, 0.52, 0.12), MACHINE_DARK, 0.68)
-        post_b.position = post_b_pos
-        _add_decor(parent, post_b)
-        var bar := _box(Vector3(0.82, 0.12, 0.12), YELLOW, 0.50)
-        bar.position = Vector3(float(x + (0.36 if x < 0 else -0.36)), 0.34, 6.35)
-        _add_decor(parent, bar)
-
-    for x in [-4.12, 4.12]:
-        var pole_pos := Vector3(float(x), 0.34, 6.35)
-        if not _clears(pole_pos, occupied):
-            continue
-        var pole := _cylinder(0.07, 0.94, Color("#6B7478"), 0.58, 0.0, 0.12)
-        pole.position = pole_pos
-        _add_decor(parent, pole)
-        var lamp := _sphere(0.13, GREEN_ACCENT, 0.28, 0.30)
-        lamp.position = Vector3(float(x), 0.88, 6.35)
-        _add_decor(parent, lamp)
+static func _make_flower(pos: Vector3, index: int) -> Node3D:
+    var root := Node3D.new()
+    root.position = pos
+    var stem := _cylinder(0.018, 0.14, Color("#79A964"), 0.78)
+    stem.position.y = 0.07
+    root.add_child(stem)
+    var colors: Array[Color] = [Color("#F18A96"), Color("#F4C85A"), Color("#8DB6E8")]
+    var head := _sphere(0.055, colors[index % colors.size()], 0.58)
+    head.position.y = 0.16
+    root.add_child(head)
+    return root
 
 
 static func _clears(pos: Vector3, occupied: Array) -> bool:
@@ -432,16 +301,6 @@ static func _clears(pos: Vector3, occupied: Array) -> bool:
 static func _add_decor(parent: Node3D, node: Node3D) -> void:
     node.add_to_group(DECOR_GROUP)
     parent.add_child(node)
-
-
-static func _vendor_mesh(resource: Resource, tint: Color, scale_value: Vector3) -> MeshInstance3D:
-    var node := MeshInstance3D.new()
-    node.name = "CC0EnvironmentProp"
-    if resource is Mesh:
-        node.mesh = resource as Mesh
-    node.material_override = material(tint, 0.70)
-    node.scale = scale_value
-    return node
 
 
 static func _box(size: Vector3, color: Color, roughness: float = 0.72, emission: float = 0.0, metallic: float = 0.0) -> MeshInstance3D:
