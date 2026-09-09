@@ -63,7 +63,6 @@ static func create_receiver_shell(parent: Node3D, kind: String) -> Dictionary:
     mouth.position = Vector3(0, 0.40, 0.765)
     root.add_child(mouth)
 
-    # Coloured ramp with the same double chevron used by the target video.
     var tongue := _chamfered_box(Vector3(0.78, 0.085, 0.92), 0.10, colour, 0.42)
     tongue.position = Vector3(0, 0.095, 1.08)
     root.add_child(tongue)
@@ -106,6 +105,44 @@ static func create_receiver_shell(parent: Node3D, kind: String) -> Dictionary:
         "badge_anchor": badge_anchor,
         "lamp": lamp,
     }
+
+
+static func create_processor_shell(parent: Node3D, colour: Color = Color("#4D97DF")) -> Node3D:
+    # Mid-track machine inspired by the blue processor in the reference. The
+    # rail still owns movement; this shell simply wraps a normal graph node.
+    var root := Node3D.new()
+    root.name = "MidTrackProcessor"
+    parent.add_child(root)
+
+    var base := _chamfered_box(Vector3(1.66, 0.16, 1.54), 0.16, Color("#55585A"), 0.60)
+    base.position.y = 0.08
+    root.add_child(base)
+
+    var body := _chamfered_box(Vector3(1.50, 1.18, 1.42), 0.20, colour, 0.32)
+    body.position.y = 0.68
+    root.add_child(body)
+
+    var face_front := _chamfered_box(Vector3(0.92, 0.52, 0.12), 0.09, colour.darkened(0.18), 0.38)
+    face_front.position = Vector3(0, 0.50, 0.73)
+    root.add_child(face_front)
+    var mouth_front := _chamfered_box(Vector3(0.74, 0.34, 0.14), 0.07, Color("#2E3235"), 0.46)
+    mouth_front.position = Vector3(0, 0.43, 0.80)
+    root.add_child(mouth_front)
+
+    var mouth_back := _chamfered_box(Vector3(0.70, 0.30, 0.10), 0.06, Color("#34383A"), 0.48)
+    mouth_back.position = Vector3(0, 0.43, -0.755)
+    root.add_child(mouth_back)
+
+    var ring := _cylinder(0.31, 0.07, Color("#E3E1DB"), 0.24, 0.16)
+    ring.position = Vector3(0, 1.34, -0.03)
+    root.add_child(ring)
+    var dome := _sphere(0.22, colour.lightened(0.08), 0.18)
+    dome.scale.y = 0.52
+    dome.position = Vector3(0, 1.40, -0.03)
+    root.add_child(dome)
+
+    _add_lever(root, colour)
+    return root
 
 
 static func _add_lever(parent: Node3D, colour: Color) -> void:
