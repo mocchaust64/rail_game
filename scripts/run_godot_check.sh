@@ -9,3 +9,4 @@ if ! command -v "$GODOT_BIN" >/dev/null 2>&1; then
 fi
 "$GODOT_BIN" --headless --path "$ROOT" --editor --quit
 "$GODOT_BIN" --headless --path "$ROOT" --quit-after 5
+"$GODOT_BIN" --headless --path "$ROOT" --script res://tests/prop_clearance_check.gd

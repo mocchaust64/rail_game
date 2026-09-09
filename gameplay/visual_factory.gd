@@ -44,7 +44,7 @@ static func kind_color(kind: String) -> Color:
         "yellow": return YELLOW
         _: return Color.WHITE
 
-static func create_floor(parent: Node3D) -> Node3D:
+static func create_floor(parent: Node3D, occupied: Array = []) -> Node3D:
     var root := Node3D.new()
     root.name = "ToyFactoryBoard"
     parent.add_child(root)
@@ -81,7 +81,7 @@ static func create_floor(parent: Node3D) -> Node3D:
         rail.position = Vector3(0, 0.02, float(z))
         root.add_child(rail)
 
-    _create_decor(root)
+    _create_decor(root, occupied)
     return root
 
 static func create_track(parent: Node3D, from_pos: Vector3, to_pos: Vector3) -> Node3D:
@@ -282,77 +282,112 @@ static func create_win_confetti(parent: Node3D, origin: Vector3 = Vector3(0, 0.6
         tween.parallel().tween_property(piece, "scale", Vector3.ONE * 0.05, 0.40)
     root.get_tree().create_timer(1.05).timeout.connect(root.queue_free)
 
-static func _create_decor(parent: Node3D) -> void:
-    # All decoration lives outside the actionable center so it never competes with gameplay.
-    # CC0 vendor geometry is deliberately limited to environmental dressing.
+# Every decoration node joins this group so the clearance check can measure
+# what actually ends up in the scene, rather than guessing from node names.
+const DECOR_GROUP := "decoration"
+
+# Minimum distance from any receiver or source, in board units. Derived from the
+# geometry: the receiver body is a 1.55 box, so 0.78 half extent, plus roughly
+# 0.5 for the widest prop, plus margin. Retune here if actor sizes change.
+const DECOR_CLEARANCE := 1.8
+
+# Decoration lives in the two outer side lanes and the back corners. Those bands
+# were chosen because they clear every actor position across all ten levels; the
+# runtime filter below is the safety net for levels added later.
+const DECOR_VENDOR: Array = [
+    {"mesh": "loaded", "pos": Vector3(-4.12, -0.12, -3.25), "rot": 0.12, "scale": 0.215},
+    {"mesh": "loaded", "pos": Vector3(4.12, -0.12, 0.55), "rot": 3.2216, "scale": 0.195},
+    {"mesh": "pallet", "pos": Vector3(4.12, -0.12, -3.25), "rot": -0.08, "scale": 0.205},
+    {"mesh": "pallet", "pos": Vector3(-4.12, -0.12, 0.55), "rot": 3.2416, "scale": 0.205},
+    {"mesh": "barrel", "pos": Vector3(-4.12, 0.33, -1.95), "rot": 0.0, "scale": 0.82},
+    {"mesh": "barrel", "pos": Vector3(-4.12, 0.33, -1.20), "rot": 0.4, "scale": 0.82},
+    {"mesh": "barrel", "pos": Vector3(4.12, 0.33, -1.95), "rot": 0.0, "scale": 0.82},
+    {"mesh": "barrel", "pos": Vector3(4.12, 0.33, -1.20), "rot": 0.4, "scale": 0.82},
+]
+
+
+static func _add_decor(parent: Node3D, node: Node3D) -> void:
+    node.add_to_group(DECOR_GROUP)
+    parent.add_child(node)
+
+
+static func _clears(pos: Vector3, occupied: Array) -> bool:
+    var flat := Vector2(pos.x, pos.z)
+    for point in occupied:
+        if flat.distance_to(point as Vector2) < DECOR_CLEARANCE:
+            return false
+    return true
+
+
+# occupied is an Array of Vector2 giving receiver and source positions in board XZ.
+static func _create_decor(parent: Node3D, occupied: Array) -> void:
+    # All decoration lives outside the actionable center so it never competes with
+    # gameplay. CC0 vendor geometry is deliberately limited to environmental dressing.
     var pallet_tint := Color("#A97F62")
     var cargo_tint := Color("#B7C6CE")
     var barrel_tint := Color("#91A9B5")
 
-    # Two loaded pallets anchor the lower factory corners. The low-poly silhouette reads
-    # much richer than primitive cubes without stealing attention from the puzzle.
-    var loaded_left := _vendor_mesh(KAYKIT_LOADED_PALLET, cargo_tint, Vector3.ONE * 0.215)
-    loaded_left.position = Vector3(-3.65, -0.12, -5.42)
-    loaded_left.rotation.y = 0.12
-    parent.add_child(loaded_left)
-
-    var loaded_right := _vendor_mesh(KAYKIT_LOADED_PALLET, cargo_tint, Vector3.ONE * 0.195)
-    loaded_right.position = Vector3(3.66, -0.12, 5.42)
-    loaded_right.rotation.y = PI + 0.08
-    parent.add_child(loaded_right)
-
-    # Bare pallets make the scene feel like a working toy factory while keeping a clear
-    # center lane for gameplay.
-    for spec in [
-        [Vector3(3.72, -0.12, -5.48), -0.08],
-        [Vector3(-3.72, -0.12, 5.48), PI + 0.10],
-    ]:
-        var pallet := _vendor_mesh(KAYKIT_PALLET, pallet_tint, Vector3.ONE * 0.205)
-        pallet.position = spec[0]
-        pallet.rotation.y = spec[1]
-        parent.add_child(pallet)
-
-    # CC0 barrel props are placed in pairs. Their original low-poly faceting is preserved,
-    # but the project material unifies them with Flow Factory's palette.
-    for pos in [
-        Vector3(-3.78, 0.33, -4.35),
-        Vector3(-3.18, 0.33, -4.55),
-        Vector3(3.75, 0.33, 4.22),
-        Vector3(3.18, 0.33, 4.47),
-    ]:
-        var barrel := _vendor_mesh(KAYKIT_BARREL, barrel_tint, Vector3.ONE * 0.82)
-        barrel.position = pos
-        parent.add_child(barrel)
+    for entry in DECOR_VENDOR:
+        var spec: Dictionary = entry
+        var pos: Vector3 = spec["pos"]
+        if not _clears(pos, occupied):
+            continue
+        var resource: Resource = KAYKIT_BARREL
+        var tint := barrel_tint
+        match String(spec["mesh"]):
+            "loaded":
+                resource = KAYKIT_LOADED_PALLET
+                tint = cargo_tint
+            "pallet":
+                resource = KAYKIT_PALLET
+                tint = pallet_tint
+        var scale_value: float = spec["scale"]
+        var prop := _vendor_mesh(resource, tint, Vector3.ONE * scale_value)
+        prop.position = pos
+        prop.rotation.y = float(spec["rot"])
+        _add_decor(parent, prop)
 
     # Custom tanks complement the imported props without multiplying external dependencies.
     for x in [-3.72, 3.72]:
+        var tank_pos := Vector3(float(x), 0.42, 0.1)
+        if not _clears(tank_pos, occupied):
+            continue
         var tank := _cylinder(0.34, 1.12, Color("#AEBFC8"), 0.70, 0.0, 0.08)
-        tank.position = Vector3(float(x), 0.42, 0.1)
-        parent.add_child(tank)
+        tank.position = tank_pos
+        _add_decor(parent, tank)
         var tank_cap := _cylinder(0.20, 0.12, GREEN_ACCENT if x < 0 else ORANGE_ACCENT, 0.44, 0.22)
         tank_cap.position = Vector3(float(x), 1.02, 0.1)
-        parent.add_child(tank_cap)
+        _add_decor(parent, tank_cap)
 
-    # Compact safety barriers visually frame the upper workspace.
+    # Compact safety barriers frame the back of the workspace, behind every receiver.
     for x in [-3.45, 3.45]:
+        var inner := float(x + (0.72 if x < 0 else -0.72))
+        var post_a_pos := Vector3(float(x), 0.16, 6.35)
+        var post_b_pos := Vector3(inner, 0.16, 6.35)
+        if not _clears(post_a_pos, occupied) or not _clears(post_b_pos, occupied):
+            continue
         var post_a := _box(Vector3(0.12, 0.52, 0.12), MACHINE_DARK, 0.80)
-        post_a.position = Vector3(float(x), 0.16, 5.02)
-        parent.add_child(post_a)
+        post_a.position = post_a_pos
+        _add_decor(parent, post_a)
         var post_b := _box(Vector3(0.12, 0.52, 0.12), MACHINE_DARK, 0.80)
-        post_b.position = Vector3(float(x + (0.72 if x < 0 else -0.72)), 0.16, 5.02)
-        parent.add_child(post_b)
+        post_b.position = post_b_pos
+        _add_decor(parent, post_b)
         var bar := _box(Vector3(0.82, 0.12, 0.12), YELLOW, 0.62)
-        bar.position = Vector3(float(x + (0.36 if x < 0 else -0.36)), 0.34, 5.02)
-        parent.add_child(bar)
+        bar.position = Vector3(float(x + (0.36 if x < 0 else -0.36)), 0.34, 6.35)
+        _add_decor(parent, bar)
 
     # Corner status beacons provide subtle animation targets for the eye.
-    for x in [-4.0, 4.0]:
+    for x in [-4.12, 4.12]:
+        var pole_pos := Vector3(float(x), 0.34, 6.35)
+        if not _clears(pole_pos, occupied):
+            continue
         var pole := _cylinder(0.07, 0.94, MACHINE_DARK, 0.8)
-        pole.position = Vector3(float(x), 0.34, 4.9)
-        parent.add_child(pole)
+        pole.position = pole_pos
+        _add_decor(parent, pole)
         var lamp := _sphere(0.13, GREEN_ACCENT, 0.35, 0.55)
-        lamp.position = Vector3(float(x), 0.88, 4.9)
-        parent.add_child(lamp)
+        lamp.position = Vector3(float(x), 0.88, 6.35)
+        _add_decor(parent, lamp)
+
 
 static func _vendor_mesh(resource: Resource, tint: Color, scale_value: Vector3) -> MeshInstance3D:
     var node := MeshInstance3D.new()

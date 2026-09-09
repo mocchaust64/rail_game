@@ -147,15 +147,20 @@ func _clear_runtime() -> void:
     _buffer_chute = null
 
 func _build_level() -> void:
-    VisualFactory.create_floor(_world)
-    _buffer_chute = VisualFactory.create_buffer_chute(_world)
-
+    # Node positions are parsed first: the floor decoration needs them so props
+    # can be filtered away from wherever this level puts its receivers and sources.
+    var occupied: Array[Vector2] = []
     for raw_node in level["nodes"]:
         var node: Dictionary = raw_node
         var id := String(node["id"])
         nodes_by_id[id] = node
         var p: Array = node["pos"]
         positions[id] = Vector3(float(p[0]), 0.0, float(p[1]))
+        if String(node.get("type", "normal")) in ["receiver", "source"]:
+            occupied.append(Vector2(float(p[0]), float(p[1])))
+
+    VisualFactory.create_floor(_world, occupied)
+    _buffer_chute = VisualFactory.create_buffer_chute(_world)
 
     var drawn: Dictionary = {}
     for id in nodes_by_id:
