@@ -108,10 +108,12 @@ static func _draw_tracks(nodes_by_id: Dictionary, positions: Dictionary, world: 
             var start: Vector3 = positions[id]
             var finish: Vector3 = positions[target]
             var points := TrackGeometry.path_for(id, target, start, finish)
+
+            # The common incoming rail reaches the switch centre. Only the two
+            # outgoing branches start after a short gap; the rotating rail arm
+            # inside JunctionActor fills that gap for the selected route.
             var start_trim := JUNCTION_VISUAL_GAP if String(node.get("type", "normal")) == "junction" else 0.0
-            var target_node: Dictionary = nodes_by_id[target]
-            var end_trim := JUNCTION_VISUAL_GAP if String(target_node.get("type", "normal")) == "junction" else 0.0
-            TrackVisuals.create_path(world, points, start_trim, end_trim)
+            TrackVisuals.create_path(world, points, start_trim, 0.0)
             drawn[key] = true
 
 
