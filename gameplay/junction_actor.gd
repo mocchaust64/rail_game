@@ -28,7 +28,7 @@ func _process(delta: float) -> void:
     _clock += delta
     if _hint_ring != null:
         if _hint_active:
-            var pulse := 1.0 + sin(_clock * 5.0) * 0.12
+            var pulse := 1.0 + sin(_clock * 5.0) * 0.10
             _hint_ring.visible = true
             _hint_ring.scale = Vector3(pulse, 1.0, pulse)
         else:
@@ -54,7 +54,7 @@ func _perform_toggle() -> void:
 
     if _base_disc != null:
         var press_tween := Motion.tween(_base_disc)
-        press_tween.tween_property(_base_disc, "scale", Vector3(0.93, 0.82, 0.93), 0.055)
+        press_tween.tween_property(_base_disc, "scale", Vector3(0.93, 0.84, 0.93), 0.055)
         press_tween.tween_property(_base_disc, "scale", Vector3.ONE, 0.085)
 
     var target_angle := _target_angle()
@@ -82,60 +82,62 @@ func _snap_pointer() -> void:
         _pointer.rotation.y = _target_angle()
 
 func _build_visual() -> void:
+    # Compact mechanical turntable. The old 0.72-unit green disc was visually
+    # larger than the cargo and became the main subject of the frame.
     _base_disc = MeshInstance3D.new()
     var base_mesh := CylinderMesh.new()
-    base_mesh.top_radius = 0.72
-    base_mesh.bottom_radius = 0.72
-    base_mesh.height = 0.22
+    base_mesh.top_radius = 0.46
+    base_mesh.bottom_radius = 0.49
+    base_mesh.height = 0.18
     base_mesh.radial_segments = 24
     _base_disc.mesh = base_mesh
-    _base_disc.position.y = 0.19
-    _base_disc.material_override = VisualFactory.material(VisualFactory.MACHINE_DARK, 0.62)
+    _base_disc.position.y = 0.18
+    _base_disc.material_override = VisualFactory.material(Color("#5B5B58"), 0.50, 0.0, 0.10)
     add_child(_base_disc)
 
-    var accent := MeshInstance3D.new()
-    var accent_mesh := CylinderMesh.new()
-    accent_mesh.top_radius = 0.58
-    accent_mesh.bottom_radius = 0.58
-    accent_mesh.height = 0.10
-    accent_mesh.radial_segments = 24
-    accent.mesh = accent_mesh
-    accent.position.y = 0.35
-    accent.material_override = VisualFactory.material(VisualFactory.GREEN_ACCENT, 0.38, 0.14)
-    add_child(accent)
+    var cap := MeshInstance3D.new()
+    var cap_mesh := CylinderMesh.new()
+    cap_mesh.top_radius = 0.34
+    cap_mesh.bottom_radius = 0.34
+    cap_mesh.height = 0.08
+    cap_mesh.radial_segments = 24
+    cap.mesh = cap_mesh
+    cap.position.y = 0.31
+    cap.material_override = VisualFactory.material(Color("#B5B4AE"), 0.36, 0.0, 0.18)
+    add_child(cap)
 
     _hint_ring = MeshInstance3D.new()
-    var hint_mesh := CylinderMesh.new()
-    hint_mesh.top_radius = 0.88
-    hint_mesh.bottom_radius = 0.88
-    hint_mesh.height = 0.035
-    hint_mesh.radial_segments = 32
+    var hint_mesh := TorusMesh.new()
+    hint_mesh.inner_radius = 0.54
+    hint_mesh.outer_radius = 0.61
+    hint_mesh.rings = 24
+    hint_mesh.ring_segments = 8
     _hint_ring.mesh = hint_mesh
-    _hint_ring.position.y = 0.31
-    _hint_ring.material_override = VisualFactory.material(Color("#FFF5C8"), 0.45, 0.30)
+    _hint_ring.position.y = 0.22
+    _hint_ring.material_override = VisualFactory.material(Color("#FFF1A8"), 0.32, 0.55)
     _hint_ring.visible = false
     add_child(_hint_ring)
 
     _pointer = Node3D.new()
-    _pointer.position.y = 0.10
+    _pointer.position.y = 0.30
     add_child(_pointer)
 
     var stem := MeshInstance3D.new()
     var stem_mesh := BoxMesh.new()
-    stem_mesh.size = Vector3(0.18, 0.14, 0.72)
+    stem_mesh.size = Vector3(0.12, 0.09, 0.48)
     stem.mesh = stem_mesh
-    stem.position = Vector3(0, 0.34, 0.27)
-    stem.material_override = VisualFactory.material(Color("#FFFFFF"), 0.35, 0.12)
+    stem.position = Vector3(0, 0.055, 0.18)
+    stem.material_override = VisualFactory.material(Color("#F4F1E9"), 0.30)
     _pointer.add_child(stem)
 
     var tip := MeshInstance3D.new()
     var tip_mesh := CylinderMesh.new()
     tip_mesh.radial_segments = 3
-    tip_mesh.top_radius = 0.30
-    tip_mesh.bottom_radius = 0.30
-    tip_mesh.height = 0.16
+    tip_mesh.top_radius = 0.19
+    tip_mesh.bottom_radius = 0.19
+    tip_mesh.height = 0.10
     tip.mesh = tip_mesh
-    tip.position = Vector3(0, 0.34, 0.68)
+    tip.position = Vector3(0, 0.055, 0.46)
     tip.rotation = Vector3(PI * 0.5, 0, 0)
-    tip.material_override = VisualFactory.material(Color("#FFFFFF"), 0.35, 0.12)
+    tip.material_override = VisualFactory.material(Color("#F4F1E9"), 0.30)
     _pointer.add_child(tip)
