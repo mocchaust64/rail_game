@@ -4,7 +4,11 @@ extends Node3D
 enum GameState { BOOT, LEVEL_LOADING, READY, PLAYING, PAUSED, FAILED, COMPLETED }
 
 const LEVEL_COUNT := 10
-const TAP_RADIUS_PX := 118.0
+# Tap tolerance around a junction, in board units rather than pixels. Under the
+# perspective camera a fixed pixel radius would make distant junctions feel
+# oversized to tap and near ones undersized, so it is converted per junction.
+# 0.95 units reproduces the 118 pixel radius the orthographic camera had.
+const TAP_RADIUS_UNITS := 0.95
 
 # Lighting rig. These are feel values tuned against the real render on a board
 # roughly 9.2 by 14.1 units; engine defaults assume a much larger world. Retune
@@ -490,14 +494,20 @@ func _unhandled_input(event: InputEvent) -> void:
         return
 
     var best: JunctionActor = null
-    var best_distance := TAP_RADIUS_PX
+    var best_score := 1.0
     for id in junctions:
         var junction := junctions[id] as JunctionActor
-        var projected := _camera.unproject_position(junction.global_position + Vector3(0, 0.38, 0))
-        var distance := projected.distance_to(screen_pos)
-        if distance < best_distance:
+        var anchor := junction.global_position + Vector3(0, 0.38, 0)
+        var projected := _camera.unproject_position(anchor)
+        var radius_px := screen_radius(_camera, anchor, TAP_RADIUS_UNITS)
+        if radius_px <= 0.0:
+            continue
+        # Scored as a fraction of each junction's own radius so junctions at
+        # different depths compete fairly.
+        var score := projected.distance_to(screen_pos) / radius_px
+        if score < best_score:
             best = junction
-            best_distance = distance
+            best_score = score
 
     if best == null:
         return
@@ -556,3 +566,11 @@ func _notification(what: int) -> void:
     if what == NOTIFICATION_APPLICATION_PAUSED and state == GameState.PLAYING:
         call_deferred("_on_pause_requested")
 
+
+
+# Pixel radius that `units` board units covers at this world position, measured by
+# projecting a point that far to the camera's right. Static so it can be tested
+# against a camera built from the same constants.
+static func screen_radius(camera: Camera3D, anchor: Vector3, units: float) -> float:
+    var edge := anchor + camera.global_transform.basis.x * units
+    return camera.unproject_position(anchor).distance_to(camera.unproject_position(edge))

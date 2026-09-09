@@ -10,3 +10,4 @@ fi
 "$GODOT_BIN" --headless --path "$ROOT" --editor --quit
 "$GODOT_BIN" --headless --path "$ROOT" --quit-after 5
 "$GODOT_BIN" --headless --path "$ROOT" --script res://tests/prop_clearance_check.gd
+"$GODOT_BIN" --headless --path "$ROOT" res://tests/tap_radius_check.tscn
