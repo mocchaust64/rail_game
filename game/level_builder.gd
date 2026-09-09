@@ -1,11 +1,8 @@
 class_name LevelBuilder
 extends RefCounted
-# Builds gameplay plus the reference-video presentation. Possible routes are
-# visible as pale guide rails; junctions own the dark moving bridge that connects
-# one branch at a time.
 
 const LEVEL_PATH := "res://levels/level_%02d.json"
-const BLOCKING_TYPES := ["receiver", "source"]
+const BLOCKING_TYPES := ["receiver", "source", "sorter_site"]
 
 
 static func load_data(level_number: int) -> Dictionary:
@@ -58,6 +55,9 @@ static func build(level: Dictionary, world: Node3D, pool_size: int) -> Dictionar
     var sources: Dictionary = {}
     var receivers: Dictionary = {}
     var junctions: Dictionary = {}
+    var sorters: Dictionary = {}
+    var default_sorter_cost := int(level.get("sorter_cost", 3))
+
     for id in nodes_by_id:
         var node: Dictionary = nodes_by_id[id]
         match String(node.get("type", "normal")):
@@ -80,6 +80,12 @@ static func build(level: Dictionary, world: Node3D, pool_size: int) -> Dictionar
                 world.add_child(junction)
                 junction.configure(node, positions)
                 junctions[id] = junction
+            "sorter_site":
+                var sorter := SorterActor.new()
+                sorter.position = positions[id]
+                world.add_child(sorter)
+                sorter.configure(node, positions, default_sorter_cost)
+                sorters[id] = sorter
             "normal":
                 if String(node.get("visual", "")) == "processor":
                     var processor := ProcessorVisual.create(world)
@@ -98,6 +104,7 @@ static func build(level: Dictionary, world: Node3D, pool_size: int) -> Dictionar
         "sources": sources,
         "receivers": receivers,
         "junctions": junctions,
+        "sorters": sorters,
         "buffer_chute": buffer_chute,
         "item_pool": item_pool,
     }
@@ -110,9 +117,11 @@ static func _draw_tracks(nodes_by_id: Dictionary, positions: Dictionary, world: 
         var node: Dictionary = nodes_by_id[id]
         var targets := _targets(node)
         var node_type := String(node.get("type", "normal"))
-        # Junction branches in the reference are mostly bare silver guide rails;
-        # the dark belt is the physical bridge owned by JunctionActor.
-        var default_belt := node_type != "junction"
+
+        # Sorter outputs are possible routes. Before a sorter is built they stay
+        # as pale guide rails only. SorterActor adds the continuous black belt
+        # after construction, which makes the player's plan readable at a glance.
+        var default_belt := node_type not in ["junction", "sorter_site"]
         var show_belt := bool(node.get("belt", default_belt))
         var show_guides := bool(node.get("guides", true))
 
@@ -137,6 +146,9 @@ static func _targets(node: Dictionary) -> Array:
     if node_type == "junction":
         targets.append(String(node["out_a"]))
         targets.append(String(node["out_b"]))
+    elif node_type == "sorter_site":
+        for key in ["out_1", "out_2", "out_3"]:
+            targets.append(String(node[key]))
     elif node_type != "receiver":
         var next_id := String(node.get("next", ""))
         if not next_id.is_empty():

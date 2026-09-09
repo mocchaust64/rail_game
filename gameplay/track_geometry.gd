@@ -1,8 +1,5 @@
 class_name TrackGeometry
 extends RefCounted
-# One deterministic presentation path per graph edge. The graph still owns the
-# rules; these denser, longer handles only make the rails read like the smooth
-# toy railway in the reference video.
 
 const HANDLE_FACTOR := 0.40
 const MAX_HANDLE := 1.65
@@ -37,14 +34,11 @@ static func rebuild(nodes_by_id: Dictionary, positions: Dictionary) -> void:
     var tangents: Dictionary = {}
     for raw_id in nodes_by_id:
         var id := String(raw_id)
-        var incoming_ids: Array = incoming.get(id, [])
-        var outgoing_ids: Array = outgoing.get(id, [])
-        tangents[id] = _node_tangent(id, incoming_ids, outgoing_ids, positions)
+        tangents[id] = _node_tangent(id, incoming.get(id, []), outgoing.get(id, []), positions)
 
     for raw_id in nodes_by_id:
         var id := String(raw_id)
-        var targets: Array = outgoing[id]
-        for raw_target in targets:
+        for raw_target in outgoing[id]:
             var target := String(raw_target)
             if not positions.has(id) or not positions.has(target):
                 continue
@@ -105,6 +99,11 @@ static func _targets(node: Dictionary) -> Array:
     if node_type == "junction":
         result.append(String(node.get("out_a", "")))
         result.append(String(node.get("out_b", "")))
+    elif node_type == "sorter_site":
+        for key in ["out_1", "out_2", "out_3"]:
+            var target := String(node.get(key, ""))
+            if not target.is_empty():
+                result.append(target)
     elif node_type != "receiver":
         var next_id := String(node.get("next", ""))
         if not next_id.is_empty():
@@ -122,14 +121,12 @@ static func _node_tangent(id: String, incoming_ids: Array, outgoing_ids: Array, 
     for raw_prev in incoming_ids:
         var prev := String(raw_prev)
         if positions.has(prev):
-            var prev_pos: Vector3 = positions[prev]
-            incoming_forward += (p - prev_pos).normalized()
+            incoming_forward += (p - (positions[prev] as Vector3)).normalized()
 
     for raw_next in outgoing_ids:
         var next_id := String(raw_next)
         if positions.has(next_id):
-            var next_pos: Vector3 = positions[next_id]
-            outgoing_forward += (next_pos - p).normalized()
+            outgoing_forward += ((positions[next_id] as Vector3) - p).normalized()
 
     if incoming_forward.length_squared() > 0.0001:
         incoming_forward = incoming_forward.normalized()

@@ -1,26 +1,33 @@
 {
   "id": 3,
-  "title": "TRACE THE ROUTE",
-  "item_speed": 1.55,
-  "spawn_interval": 0.90,
-  "buffer_capacity": 3,
-  "buffer_return_delay": 2.8,
+  "title": "SPEND SMART",
+  "gold_budget": 12,
+  "sorter_cost": 3,
+  "optimal_cost": 6,
+  "two_star_cost": 9,
+  "item_speed": 1.45,
+  "spawn_interval": 1.1,
+  "buffer_capacity": 4,
+  "buffer_return_delay": 3.0,
   "nodes": [
-    {"id": "S", "pos": [0.0, -6.0], "type": "source", "next": "J1", "source_style": "bank"},
-    {"id": "J1", "pos": [0.0, -2.55], "type": "junction", "out_a": "Y", "out_b": "J2", "initial_state": 1, "filter_kind": "red", "filter_options": ["red", "blue", "yellow"]},
-    {"id": "J2", "pos": [0.95, 0.45], "type": "junction", "out_a": "R", "out_b": "B", "initial_state": 0, "filter_kind": "yellow", "filter_options": ["red", "blue", "yellow"]},
-    {"id": "Y", "pos": [-3.0, 3.85], "type": "receiver", "kind": "yellow"},
-    {"id": "R", "pos": [0.0, 4.25], "type": "receiver", "kind": "red"},
-    {"id": "B", "pos": [3.0, 3.85], "type": "receiver", "kind": "blue"}
+    {"id": "S1", "type": "source", "pos": [-2.55, -5.9], "next": "A", "source_style": "compact"},
+    {"id": "S2", "type": "source", "pos": [2.55, -5.9], "next": "C", "source_style": "compact"},
+    {"id": "A", "type": "sorter_site", "pos": [-2.25, -2.35], "out_1": "R", "out_2": "B", "out_3": "D1", "mapping": ["blue", "red", "yellow"], "build_cost": 3},
+    {"id": "C", "type": "sorter_site", "pos": [2.25, -2.35], "out_1": "B", "out_2": "Y", "out_3": "D2", "mapping": ["yellow", "red", "blue"], "build_cost": 3},
+    {"id": "D1", "type": "sorter_site", "pos": [-0.95, 0.45], "out_1": "R", "out_2": "B", "out_3": "Y", "mapping": ["red", "blue", "yellow"], "build_cost": 3},
+    {"id": "D2", "type": "sorter_site", "pos": [0.95, 0.45], "out_1": "R", "out_2": "B", "out_3": "Y", "mapping": ["red", "blue", "yellow"], "build_cost": 3},
+    {"id": "R", "type": "receiver", "kind": "red", "pos": [-3.25, 4.25]},
+    {"id": "B", "type": "receiver", "kind": "blue", "pos": [0, 4.5]},
+    {"id": "Y", "type": "receiver", "kind": "yellow", "pos": [3.25, 4.25]}
   ],
   "spawns": [
-    {"kind": "yellow", "source": "S"},
-    {"kind": "red", "source": "S"},
-    {"kind": "blue", "source": "S"},
-    {"kind": "yellow", "source": "S"},
-    {"kind": "blue", "source": "S"},
-    {"kind": "red", "source": "S"},
-    {"kind": "red", "source": "S"},
-    {"kind": "yellow", "source": "S"}
+    {"source": "S1", "kind": "red"},
+    {"source": "S2", "kind": "yellow"},
+    {"source": "S1", "kind": "blue"},
+    {"source": "S2", "kind": "blue"},
+    {"source": "S1", "kind": "red"},
+    {"source": "S2", "kind": "yellow"},
+    {"source": "S1", "kind": "blue"},
+    {"source": "S2", "kind": "blue"}
   ]
 }

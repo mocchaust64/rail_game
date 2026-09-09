@@ -1,22 +1,27 @@
 {
   "id": 1,
-  "title": "FIRST ROUTER",
+  "title": "BUILD THE SORTER",
+  "gold_budget": 6,
+  "sorter_cost": 3,
+  "optimal_cost": 3,
+  "two_star_cost": 6,
   "item_speed": 1.45,
-  "spawn_interval": 1.05,
+  "spawn_interval": 1.15,
   "buffer_capacity": 3,
-  "buffer_return_delay": 2.8,
+  "buffer_return_delay": 3.0,
   "nodes": [
-    {"id": "S", "pos": [0.0, -5.8], "type": "source", "next": "J1"},
-    {"id": "J1", "pos": [0.0, -1.2], "type": "junction", "out_a": "R", "out_b": "B", "initial_state": 0, "filter_kind": "blue", "filter_options": ["red", "blue"]},
-    {"id": "R", "pos": [-2.25, 3.8], "type": "receiver", "kind": "red"},
-    {"id": "B", "pos": [2.25, 3.8], "type": "receiver", "kind": "blue"}
+    {"id": "S", "type": "source", "pos": [0, -5.7], "next": "A", "source_style": "compact"},
+    {"id": "A", "type": "sorter_site", "pos": [0, -2.1], "out_1": "R", "out_2": "B", "out_3": "Y", "mapping": ["blue", "yellow", "red"], "build_cost": 3},
+    {"id": "R", "type": "receiver", "kind": "red", "pos": [-3.0, 4.0]},
+    {"id": "B", "type": "receiver", "kind": "blue", "pos": [0, 4.25]},
+    {"id": "Y", "type": "receiver", "kind": "yellow", "pos": [3.0, 4.0]}
   ],
   "spawns": [
-    {"kind": "red", "source": "S"},
-    {"kind": "blue", "source": "S"},
-    {"kind": "red", "source": "S"},
-    {"kind": "blue", "source": "S"},
-    {"kind": "blue", "source": "S"},
-    {"kind": "red", "source": "S"}
+    {"source": "S", "kind": "red"},
+    {"source": "S", "kind": "blue"},
+    {"source": "S", "kind": "yellow"},
+    {"source": "S", "kind": "blue"},
+    {"source": "S", "kind": "red"},
+    {"source": "S", "kind": "yellow"}
   ]
 }

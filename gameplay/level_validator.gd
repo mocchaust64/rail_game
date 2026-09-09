@@ -3,6 +3,7 @@ extends RefCounted
 
 const SUPPORTED_KINDS := ["red", "blue", "yellow"]
 
+
 static func validate(level: Dictionary) -> PackedStringArray:
     var errors := PackedStringArray()
     if not level.has("id"):
@@ -25,6 +26,7 @@ static func validate(level: Dictionary) -> PackedStringArray:
         errors.append("buffer_return_delay must be > 0")
 
     var nodes_by_id: Dictionary = {}
+    var has_sorters := false
     for raw_node in level["nodes"]:
         if typeof(raw_node) != TYPE_DICTIONARY:
             errors.append("Every node must be an object")
@@ -41,6 +43,11 @@ static func validate(level: Dictionary) -> PackedStringArray:
         var pos: Variant = node.get("pos", [])
         if typeof(pos) != TYPE_ARRAY or pos.size() != 2:
             errors.append("Node %s must have pos [x,z]" % id)
+        if String(node.get("type", "normal")) == "sorter_site":
+            has_sorters = true
+
+    if has_sorters:
+        _validate_economy(level, errors)
 
     var receiver_kinds: Dictionary = {}
     var source_ids: Dictionary = {}
@@ -50,14 +57,30 @@ static func validate(level: Dictionary) -> PackedStringArray:
         match node_type:
             "junction":
                 for key in ["out_a", "out_b"]:
-                    var target := String(node.get(key, ""))
-                    if target.is_empty() or not nodes_by_id.has(target):
-                        errors.append("Junction %s has invalid %s=%s" % [id, key, target])
+                    _validate_target(id, key, node, nodes_by_id, errors)
                 if String(node.get("out_a", "")) == String(node.get("out_b", "")):
                     errors.append("Junction %s must have two distinct outputs" % id)
-                var initial_state := int(node.get("initial_state", 0))
-                if initial_state < 0 or initial_state > 1:
-                    errors.append("Junction %s initial_state must be 0 or 1" % id)
+            "sorter_site":
+                var targets: Dictionary = {}
+                for key in ["out_1", "out_2", "out_3"]:
+                    _validate_target(id, key, node, nodes_by_id, errors)
+                    targets[String(node.get(key, ""))] = true
+                if targets.size() != 3:
+                    errors.append("Sorter %s must have three distinct outputs" % id)
+                var mapping: Variant = node.get("mapping", [])
+                if typeof(mapping) != TYPE_ARRAY or mapping.size() != 3:
+                    errors.append("Sorter %s mapping must contain three colours" % id)
+                else:
+                    var unique: Dictionary = {}
+                    for raw_kind in mapping:
+                        var kind := String(raw_kind)
+                        if kind not in SUPPORTED_KINDS:
+                            errors.append("Sorter %s has unsupported mapping colour %s" % [id, kind])
+                        unique[kind] = true
+                    if unique.size() != 3:
+                        errors.append("Sorter %s mapping must use red, blue and yellow exactly once" % id)
+                if int(node.get("build_cost", level.get("sorter_cost", 0))) <= 0:
+                    errors.append("Sorter %s build cost must be > 0" % id)
             "receiver":
                 var receiver_kind := String(node.get("kind", ""))
                 if receiver_kind not in SUPPORTED_KINDS:
@@ -89,9 +112,31 @@ static func validate(level: Dictionary) -> PackedStringArray:
             errors.append("Source %s cannot reach receiver kind %s" % [source, item_kind])
 
     if _graph_has_cycle(nodes_by_id):
-        errors.append("Track graph contains a cycle; MVP levels must terminate at receivers")
+        errors.append("Track graph contains a cycle; current levels must terminate at receivers")
 
     return errors
+
+
+static func _validate_economy(level: Dictionary, errors: PackedStringArray) -> void:
+    var budget := int(level.get("gold_budget", 0))
+    var sorter_cost := int(level.get("sorter_cost", 0))
+    var optimal := int(level.get("optimal_cost", 0))
+    var two_star := int(level.get("two_star_cost", 0))
+    if budget <= 0:
+        errors.append("gold_budget must be > 0")
+    if sorter_cost <= 0:
+        errors.append("sorter_cost must be > 0")
+    if optimal <= 0 or optimal > budget:
+        errors.append("optimal_cost must be > 0 and <= gold_budget")
+    if two_star < optimal or two_star > budget:
+        errors.append("two_star_cost must be between optimal_cost and gold_budget")
+
+
+static func _validate_target(id: String, key: String, node: Dictionary, nodes_by_id: Dictionary, errors: PackedStringArray) -> void:
+    var target := String(node.get(key, ""))
+    if target.is_empty() or not nodes_by_id.has(target):
+        errors.append("Node %s has invalid %s=%s" % [id, key, target])
+
 
 static func _validate_next(id: String, node: Dictionary, nodes_by_id: Dictionary, errors: PackedStringArray) -> void:
     var next_id := String(node.get("next", ""))
@@ -100,17 +145,24 @@ static func _validate_next(id: String, node: Dictionary, nodes_by_id: Dictionary
     elif not nodes_by_id.has(next_id):
         errors.append("Node %s has invalid next=%s" % [id, next_id])
 
+
 static func _outputs(node: Dictionary) -> Array[String]:
     var result: Array[String] = []
     var node_type := String(node.get("type", "normal"))
     if node_type == "junction":
         result.append(String(node.get("out_a", "")))
         result.append(String(node.get("out_b", "")))
+    elif node_type == "sorter_site":
+        for key in ["out_1", "out_2", "out_3"]:
+            var target := String(node.get(key, ""))
+            if not target.is_empty():
+                result.append(target)
     elif node_type != "receiver":
         var next_id := String(node.get("next", ""))
         if not next_id.is_empty():
             result.append(next_id)
     return result
+
 
 static func _can_reach_kind(start_id: String, target_kind: String, nodes_by_id: Dictionary) -> bool:
     var stack: Array[String] = [start_id]
@@ -130,6 +182,7 @@ static func _can_reach_kind(start_id: String, target_kind: String, nodes_by_id: 
                 stack.append(target)
     return false
 
+
 static func _graph_has_cycle(nodes_by_id: Dictionary) -> bool:
     var colors: Dictionary = {}
     for id in nodes_by_id:
@@ -139,10 +192,10 @@ static func _graph_has_cycle(nodes_by_id: Dictionary) -> bool:
             return true
     return false
 
+
 static func _visit_cycle(id: String, nodes_by_id: Dictionary, colors: Dictionary) -> bool:
     colors[id] = 1
-    var node: Dictionary = nodes_by_id[id]
-    for target in _outputs(node):
+    for target in _outputs(nodes_by_id[id]):
         if target.is_empty() or not nodes_by_id.has(target):
             continue
         if int(colors.get(target, 0)) == 1:
