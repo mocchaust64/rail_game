@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.3.2
+
+Art is data
+
+- colours moved out of visual_factory.gd into `assets/palette/toy_factory.tres`,
+  so the look can be changed without touching code
+- CC0 gameplay models for cargo and source machines, with the packs' texture
+  atlases; gameplay surfaces had no texture at all before
+
+Structure
+
+- `game/scene_rig.gd` owns camera, lights, environment and shake
+- `game/level_builder.gd` owns reading, validating and building a level
+- game_controller.gd drops from 635 to 509 lines and no longer touches either
+
+Feel
+
+- trauma-based screen shake, a short hitstop on impact, particle bursts on
+  delivery and rejection, and music ducking
+
+Reach
+
+- English and Vietnamese translations, no hardcoded user-facing text
+- reduced motion, large text and a slower line as saved settings
+
+Robustness
+
+- save keeps a validated backup and recovers from a corrupt file
+- analytics appends instead of rewriting its whole history every eight events
+- pooled audio voices on SFX and Music buses
+- pooled cargo nodes
+
+Checks
+
+- twelve automated checks, up from three; the state machine is covered for the
+  first time, which is what made the split safe
+
 ## 0.3.1
 
 Build fixes

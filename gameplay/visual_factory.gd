@@ -1,19 +1,25 @@
 class_name VisualFactory
 extends RefCounted
 
-const FLOOR_COLOR := Color("#C6D3D9")
-const FLOOR_EDGE := Color("#AEBFC8")
-const BELT_COLOR := Color("#28384C")
-const BELT_INNER := Color("#51677C")
-const BELT_SLAT := Color("#6E8294")
-const RAIL_COLOR := Color("#E9F0F3")
-const MACHINE_BODY := Color("#F7F9FB")
-const MACHINE_DARK := Color("#26384C")
-const RED := Color("#F45B69")
-const BLUE := Color("#4F8EF7")
-const YELLOW := Color("#F4C542")
-const GREEN_ACCENT := Color("#59D3A5")
-const ORANGE_ACCENT := Color("#FF9B62")
+# Colours come from a resource so they can be edited without touching code.
+# The names below stay as aliases so call sites read the same as before.
+const PALETTE_PATH := "res://assets/palette/toy_factory.tres"
+static var palette: ToyFactoryPalette = load(PALETTE_PATH)
+
+static var FLOOR_COLOR: Color = palette.floor_colour
+static var FLOOR_EDGE: Color = palette.floor_edge
+static var FLOOR_INSET: Color = palette.floor_inset
+static var BELT_COLOR: Color = palette.belt
+static var BELT_INNER: Color = palette.belt_inner
+static var BELT_SLAT: Color = palette.belt_slat
+static var RAIL_COLOR: Color = palette.rail
+static var MACHINE_BODY: Color = palette.machine_body
+static var MACHINE_DARK: Color = palette.machine_dark
+static var RED: Color = palette.cargo_red
+static var BLUE: Color = palette.cargo_blue
+static var YELLOW: Color = palette.cargo_yellow
+static var GREEN_ACCENT: Color = palette.accent_green
+static var ORANGE_ACCENT: Color = palette.accent_orange
 
 # Curated CC0 environment dressing. Gameplay-critical assets remain original.
 const KAYKIT_PALLET = preload("res://assets/vendor/kaykit_prototype_bits/Pallet_Large_CC0_Derived.obj")
@@ -106,11 +112,8 @@ static func _tint(node: Node, colour: Color) -> void:
 
 
 static func kind_color(kind: String) -> Color:
-    match kind:
-        "red": return RED
-        "blue": return BLUE
-        "yellow": return YELLOW
-        _: return Color.WHITE
+    return palette.cargo_colour(kind)
+
 
 static func create_floor(parent: Node3D, occupied: Array = []) -> Node3D:
     var root := Node3D.new()
@@ -122,7 +125,7 @@ static func create_floor(parent: Node3D, occupied: Array = []) -> Node3D:
     floor.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     root.add_child(floor)
 
-    var inset := _box(Vector3(8.72, 0.05, 13.62), Color("#D5E1E7"), 0.98)
+    var inset := _box(Vector3(8.72, 0.05, 13.62), FLOOR_INSET, 0.98)
     inset.position = Vector3(0, -0.17, 0)
     inset.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     root.add_child(inset)

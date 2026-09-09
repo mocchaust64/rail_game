@@ -21,24 +21,7 @@ const HITSTOP_FAIL := 0.16
 # 0.95 units reproduces the 118 pixel radius the orthographic camera had.
 const TAP_RADIUS_UNITS := 0.95
 
-# Lighting rig. These are feel values tuned against the real render on a board
-# roughly 9.2 by 14.1 units; engine defaults assume a much larger world. Retune
-# here rather than in the setup body.
-const KEY_LIGHT_EULER := Vector3(-48, 32, 0)
-const KEY_LIGHT_ENERGY := 1.45
-const KEY_LIGHT_COLOR := Color("#FFF6E8")
-const KEY_LIGHT_SOFTNESS := 1.4
-const SHADOW_BIAS := 0.024
-const SHADOW_NORMAL_BIAS := 0.85
-const SHADOW_MAX_DISTANCE := 60.0
-const AMBIENT_ENERGY := 0.55
-# Mild perspective keeps the diorama read while restoring depth. Distance is set
-# so the board frames the same as the orthographic camera it replaces.
-const CAMERA_FOV := 30.0
-const CAMERA_POSITION := Vector3(0.0, 23.3, 16.9)
-const BOUNCE_POSITION := Vector3(-3.4, 3.6, 7.4)
-const BOUNCE_ENERGY := 0.38
-const BOUNCE_COLOR := Color("#FFE2C4")
+
 const SOURCE_CLEAR_PROGRESS := 0.38
 
 var state: GameState = GameState.BOOT
@@ -55,7 +38,7 @@ var buffered: Array[Dictionary] = []
 var _world: Node3D
 var _camera: Camera3D
 var _item_pool: ItemPool
-var _shake := ScreenShake.new()
+var _rig: SceneRig
 var _hitstop_remaining := 0.0
 var _hud: FlowHud
 var _buffer_chute: Node3D
@@ -74,59 +57,14 @@ func _ready() -> void:
     load_level(current_level_number)
 
 func _setup_scene() -> void:
-    _world = Node3D.new()
-    _world.name = "World"
-    add_child(_world)
-
-    _camera = Camera3D.new()
-    _camera.name = "GameCamera"
-    _camera.projection = Camera3D.PROJECTION_PERSPECTIVE
-    _camera.fov = CAMERA_FOV
-    _camera.position = CAMERA_POSITION
-    add_child(_camera)
-    _camera.look_at(Vector3(0, 0, 0.25), Vector3.UP)
-
-    var key_light := DirectionalLight3D.new()
-    key_light.rotation_degrees = KEY_LIGHT_EULER
-    key_light.light_energy = KEY_LIGHT_ENERGY
-    key_light.light_color = KEY_LIGHT_COLOR
-    key_light.shadow_enabled = true
-    key_light.light_angular_distance = KEY_LIGHT_SOFTNESS
-    key_light.shadow_bias = SHADOW_BIAS
-    key_light.shadow_normal_bias = SHADOW_NORMAL_BIAS
-    key_light.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
-    key_light.directional_shadow_max_distance = SHADOW_MAX_DISTANCE
-    add_child(key_light)
-
-    # Warm bounce from the front-lower quadrant. Without it the shadowed faces of
-    # the white machines read as flat grey once ambient is turned down.
-    var bounce := OmniLight3D.new()
-    bounce.position = BOUNCE_POSITION
-    bounce.omni_range = 22.0
-    bounce.light_energy = BOUNCE_ENERGY
-    bounce.light_color = BOUNCE_COLOR
-    bounce.shadow_enabled = false
-    add_child(bounce)
-
-    var environment := WorldEnvironment.new()
-    var env := Environment.new()
-
-    # A sky rather than a flat colour, so ambient falls off with height instead of
-    # lighting every surface equally. That falloff is what separates the machines
-    # from the board they stand on.
-    env.background_mode = Environment.BG_COLOR
-    env.background_color = Color("#BDD0D9")
-    env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-    env.ambient_light_color = Color("#EAF3F8")
-    env.ambient_light_energy = AMBIENT_ENERGY
-    env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-    env.tonemap_white = 1.35
-    env.glow_enabled = true
-    env.glow_intensity = 0.5
-    env.glow_bloom = 0.06
-    env.glow_hdr_threshold = 1.05
-    environment.environment = env
-    add_child(environment)
+    # Camera, lights and environment live in SceneRig: none of that depends on
+    # the rules of the game, and keeping it here is what made this file a
+    # dumping ground.
+    _rig = SceneRig.new()
+    _rig.name = "SceneRig"
+    add_child(_rig)
+    _camera = _rig.camera
+    _world = _rig.world
 
     _hud = FlowHud.new()
     add_child(_hud)
@@ -137,27 +75,15 @@ func _setup_scene() -> void:
     _hud.debug_previous_requested.connect(_on_debug_previous)
     _hud.debug_next_requested.connect(_on_debug_next)
 
+
 func load_level(level_number: int) -> void:
     state = GameState.LEVEL_LOADING
     current_level_number = clamp(level_number, 1, LEVEL_COUNT)
     _clear_runtime()
 
-    var path := "res://levels/level_%02d.json" % current_level_number
-    var file := FileAccess.open(path, FileAccess.READ)
-    if file == null:
-        _handle_level_error("Unable to load %s" % path)
-        return
-    var parsed: Variant = JSON.parse_string(file.get_as_text())
-    if typeof(parsed) != TYPE_DICTIONARY:
-        _handle_level_error("Invalid JSON in %s" % path)
-        return
-    level = parsed
-
-    var errors := LevelValidator.validate(level)
-    if not errors.is_empty():
-        for error in errors:
-            push_error("Level validation: %s" % error)
-        _handle_level_error("Level data failed validation.")
+    level = LevelBuilder.load_data(current_level_number)
+    if level.is_empty():
+        _handle_level_error("Level %d could not be loaded." % current_level_number)
         return
 
     _build_level()
@@ -190,9 +116,7 @@ func _clear_runtime() -> void:
         _tutorial_junction.set_hint_active(false)
     _tutorial_junction = null
 
-    for child in _world.get_children():
-        _world.remove_child(child)
-        child.queue_free()
+    _rig.clear_world()
     active_items.clear()
     buffered.clear()
     junctions.clear()
@@ -206,61 +130,15 @@ func _clear_runtime() -> void:
     _item_pool = null
 
 func _build_level() -> void:
-    # Node positions are parsed first: the floor decoration needs them so props
-    # can be filtered away from wherever this level puts its receivers and sources.
-    var occupied: Array[Vector2] = []
-    for raw_node in level["nodes"]:
-        var node: Dictionary = raw_node
-        var id := String(node["id"])
-        nodes_by_id[id] = node
-        var p: Array = node["pos"]
-        positions[id] = Vector3(float(p[0]), 0.0, float(p[1]))
-        if String(node.get("type", "normal")) in ["receiver", "source"]:
-            occupied.append(Vector2(float(p[0]), float(p[1])))
+    var built := LevelBuilder.build(level, _world, MAX_POOLED_ITEMS)
+    nodes_by_id = built["nodes_by_id"]
+    positions = built["positions"]
+    sources = built["sources"]
+    receivers = built["receivers"]
+    junctions = built["junctions"]
+    _buffer_chute = built["buffer_chute"]
+    _item_pool = built["item_pool"]
 
-    _item_pool = ItemPool.new(_world, MAX_POOLED_ITEMS)
-    VisualFactory.create_floor(_world, occupied)
-    _buffer_chute = VisualFactory.create_buffer_chute(_world)
-
-    var drawn: Dictionary = {}
-    for id in nodes_by_id:
-        var node: Dictionary = nodes_by_id[id]
-        var targets: Array[String] = []
-        if String(node.get("type", "normal")) == "junction":
-            targets.append(String(node["out_a"]))
-            targets.append(String(node["out_b"]))
-        elif String(node.get("type", "normal")) != "receiver":
-            targets.append(String(node.get("next", "")))
-        for target in targets:
-            if target.is_empty():
-                continue
-            var key := "%s>%s" % [id, target]
-            if not drawn.has(key):
-                VisualFactory.create_track(_world, positions[id], positions[target])
-                drawn[key] = true
-
-    for id in nodes_by_id:
-        var node: Dictionary = nodes_by_id[id]
-        var node_type := String(node.get("type", "normal"))
-        match node_type:
-            "source":
-                var source := SourceActor.new()
-                source.position = positions[id]
-                _world.add_child(source)
-                source.configure(String(id))
-                sources[id] = source
-            "receiver":
-                var receiver := ReceiverActor.new()
-                receiver.position = positions[id]
-                _world.add_child(receiver)
-                receiver.configure(String(id), String(node["kind"]))
-                receivers[id] = receiver
-            "junction":
-                var junction := JunctionActor.new()
-                junction.position = positions[id]
-                _world.add_child(junction)
-                junction.configure(node, positions)
-                junctions[id] = junction
 
 func _setup_tutorial_hint() -> void:
     _hud.set_tutorial_visible(false)
@@ -272,10 +150,6 @@ func _setup_tutorial_hint() -> void:
     _hud.set_tutorial_visible(true)
 
 func _process(delta: float) -> void:
-    _shake.advance(delta)
-    _camera.position = CAMERA_POSITION + _shake.offset()
-    _camera.rotation.z = _shake.roll()
-
     if _hitstop_remaining > 0.0:
         # Counted in real time so the freeze is not slowed by itself.
         _hitstop_remaining -= delta / maxf(0.05, Engine.time_scale)
@@ -399,7 +273,7 @@ func _deliver_item(item: ItemActor, receiver_id: String) -> void:
         receiver.accept()
     AudioService.play("correct", 1.0 + min(0.16, float(_junction_taps % 5) * 0.018), -3.0)
     HapticService.light()
-    _shake.add_trauma(TRAUMA_CORRECT)
+    _rig.add_trauma(TRAUMA_CORRECT)
     VisualFactory.burst(_world, positions[receiver_id] + Vector3(0, 1.0, 0), VisualFactory.kind_color(item.kind), 26, 3.2)
     item.animate_delivered()
 
@@ -426,7 +300,7 @@ func _buffer_item(item: ItemActor, receiver_id: String) -> void:
     AudioService.play("wrong", 1.0, -2.0)
     AudioService.duck_music()
     HapticService.medium()
-    _shake.add_trauma(TRAUMA_WRONG)
+    _rig.add_trauma(TRAUMA_WRONG)
     _hitstop(HITSTOP_WRONG)
     VisualFactory.burst(_world, positions[receiver_id] + Vector3(0, 1.0, 0), Color("#8C9BA6"), 18, 2.2)
     AnalyticsService.track("item_wrong", {"level": current_level_number, "buffer": buffered.size()})
@@ -517,7 +391,7 @@ func _fail(reason: String) -> void:
     AudioService.play("fail", 1.0, -1.0)
     AudioService.duck_music(12.0, 0.7)
     HapticService.heavy()
-    _shake.add_trauma(TRAUMA_FAIL)
+    _rig.add_trauma(TRAUMA_FAIL)
     _hitstop(HITSTOP_FAIL)
     AnalyticsService.track("level_fail", {
         "level": current_level_number,

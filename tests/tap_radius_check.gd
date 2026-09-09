@@ -13,10 +13,10 @@ func _ready() -> void:
 
 	var camera := Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_PERSPECTIVE
-	camera.fov = GameController.CAMERA_FOV
-	camera.position = GameController.CAMERA_POSITION
+	camera.fov = SceneRig.CAMERA_FOV
+	camera.position = SceneRig.CAMERA_POSITION
 	add_child(camera)
-	camera.look_at(Vector3(0, 0, 0.25), Vector3.UP)
+	camera.look_at(SceneRig.CAMERA_TARGET, Vector3.UP)
 	camera.current = true
 
 	var units := GameController.TAP_RADIUS_UNITS

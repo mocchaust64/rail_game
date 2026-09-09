@@ -84,6 +84,18 @@ These are release blockers for anything beyond an MVP test. Run `scripts/run_god
 
 Do **not** add ads, IAP, economy, backend, live events or dozens of extra levels before first-player validation. The v0.3 art pass is intentionally strong enough to judge the real tactile/visual appeal, while remaining small enough to kill or redesign the mechanic without sunk-cost pressure.
 
+## v0.3.2 known gaps
+
+- The cargo and buffer rules still live in game_controller.gd. The scene rig and
+  level building were extracted because they have clean boundaries; routing,
+  buffering and delivery share too much state with the state machine to split
+  without a redesign, and a bad split there is worse than none.
+- Cargo silhouettes are weaker from directly above than they were. The previous
+  primitives read as circle, square and triangle from the top; the CC0 barrel
+  and coin both read as circles, so the three kinds now lean more on colour.
+  Colour plus the drum cluster still separates them, but this is a regression in
+  the shape channel and matters for a colourblind player.
+
 ## Render comparison
 
 `docs/render_before_v030.png` and `docs/render_after_v031.png` are the same

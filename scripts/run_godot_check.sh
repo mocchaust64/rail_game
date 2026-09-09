@@ -19,3 +19,5 @@ fi
 "$ROOT/scripts/run_scene_check.sh" res://tests/accessibility_check.tscn
 "$ROOT/scripts/run_scene_check.sh" res://tests/screen_shake_check.tscn
 "$ROOT/scripts/run_scene_check.sh" res://tests/particles_check.tscn
+"$ROOT/scripts/run_scene_check.sh" res://tests/palette_check.tscn
+"$ROOT/scripts/run_scene_check.sh" res://tests/game_flow_check.tscn 45
