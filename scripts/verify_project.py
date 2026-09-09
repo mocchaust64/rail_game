@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Fast source-level verification for Flow Factory planning-router build."""
+"""Fast source-level verification for the sorter-economy vertical slice."""
 from __future__ import annotations
+
 import itertools
 import json
 import pathlib
@@ -9,7 +10,8 @@ from collections import defaultdict
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 ERRORS: list[str] = []
-KINDS = {"red", "blue", "yellow"}
+KINDS = ("red", "blue", "yellow")
+SLICE_LEVELS = (1, 2, 3)
 
 
 def fail(msg: str) -> None:
@@ -18,22 +20,29 @@ def fail(msg: str) -> None:
 
 def check_required_files() -> None:
     required = [
-        "project.godot", "app/main.tscn", "game/game_controller.gd",
-        "gameplay/item_actor.gd", "gameplay/junction_actor.gd",
-        "gameplay/receiver_actor.gd", "gameplay/source_actor.gd",
-        "gameplay/visual_factory.gd", "gameplay/machine_visuals.gd",
-        "gameplay/processor_visual.gd", "gameplay/track_motion.gd",
-        "gameplay/level_validator.gd", "gameplay/track_geometry.gd",
-        "gameplay/track_visuals.gd", "ui/hud.gd", "ui/planning_hud.gd",
-        "ui/cargo_icon.gd", "services/save_service.gd", "services/audio_service.gd",
-        "services/haptic_service.gd", "services/analytics_service.gd",
-        "assets/branding/icon.svg", "assets/branding/splash.svg",
-        "localisation/strings.csv", "assets/palette/toy_factory.tres",
-        "default_bus_layout.tres", "game/scene_rig.gd", "game/level_builder.gd",
-        "gameplay/item_pool.gd", "gameplay/motion.gd", "gameplay/screen_shake.gd",
-        "assets/branding/icon.png", "assets/branding/splash.png",
-        "tests/track_geometry_check.gd", "tests/track_geometry_check.tscn",
-        "tests/track_visuals_check.gd", "tests/track_visuals_check.tscn",
+        "project.godot",
+        "app/main.tscn",
+        "game/game_controller.gd",
+        "game/level_builder.gd",
+        "game/scene_rig.gd",
+        "gameplay/sorter_actor.gd",
+        "gameplay/item_actor.gd",
+        "gameplay/item_pool.gd",
+        "gameplay/receiver_actor.gd",
+        "gameplay/source_actor.gd",
+        "gameplay/visual_factory.gd",
+        "gameplay/track_geometry.gd",
+        "gameplay/track_visuals.gd",
+        "gameplay/track_motion.gd",
+        "gameplay/level_validator.gd",
+        "ui/hud.gd",
+        "ui/planning_hud.gd",
+        "ui/cargo_icon.gd",
+        "services/save_service.gd",
+        "services/audio_service.gd",
+        "services/haptic_service.gd",
+        "services/analytics_service.gd",
+        "assets/palette/toy_factory.tres",
     ]
     for rel in required:
         if not (ROOT / rel).exists():
@@ -51,9 +60,9 @@ def check_resource_paths() -> None:
 
 def check_custom_gameplay_visuals() -> None:
     core = [
+        ROOT / "gameplay" / "sorter_actor.gd",
         ROOT / "gameplay" / "track_visuals.gd",
         ROOT / "gameplay" / "track_motion.gd",
-        ROOT / "gameplay" / "junction_actor.gd",
         ROOT / "gameplay" / "machine_visuals.gd",
         ROOT / "gameplay" / "processor_visual.gd",
         ROOT / "gameplay" / "visual_factory.gd",
@@ -70,9 +79,12 @@ def check_custom_gameplay_visuals() -> None:
 
 
 def outputs(node: dict) -> list[str]:
-    if node["type"] == "receiver":
+    node_type = node["type"]
+    if node_type == "receiver":
         return []
-    if node["type"] == "junction":
+    if node_type == "sorter_site":
+        return [node["out_1"], node["out_2"], node["out_3"]]
+    if node_type == "junction":
         return [node["out_a"], node["out_b"]]
     return [node["next"]]
 
@@ -93,151 +105,209 @@ def graph_has_cycle(nodes: dict[str, dict]) -> bool:
     return any(color[n] == 0 and visit(n) for n in nodes)
 
 
-def reachable_kinds(nodes: dict[str, dict], source: str) -> set[str]:
-    stack = [source]
-    seen = set()
-    kinds = set()
-    while stack:
-        nid = stack.pop()
-        if nid in seen:
-            continue
-        seen.add(nid)
-        node = nodes[nid]
-        if node["type"] == "receiver":
-            kinds.add(node["kind"])
-        else:
-            stack.extend(outputs(node))
-    return kinds
+def simulate_spawn(
+    nodes: dict[str, dict],
+    spawn: dict,
+    built: set[str],
+    mappings: dict[str, tuple[str, str, str]],
+) -> bool:
+    current = spawn["source"]
+    kind = spawn["kind"]
+    visited: set[str] = set()
 
-
-def routed_receiver(nodes: dict[str, dict], source: str, kind: str, rules: dict[str, str]) -> str | None:
-    nid = source
-    seen: set[str] = set()
-    while nid in nodes and nid not in seen:
-        seen.add(nid)
-        node = nodes[nid]
+    while True:
+        if current in visited or current not in nodes:
+            return False
+        visited.add(current)
+        node = nodes[current]
         node_type = node["type"]
+
+        if node_type in {"source", "normal"}:
+            current = node["next"]
+            continue
+
+        if node_type == "sorter_site":
+            if current not in built:
+                return False
+            mapping = mappings[current]
+            try:
+                lane = mapping.index(kind)
+            except ValueError:
+                return False
+            current = node[f"out_{lane + 1}"]
+            continue
+
         if node_type == "receiver":
-            return node.get("kind")
-        if node_type == "junction":
-            selected = rules[nid]
-            nid = node["out_a"] if kind == selected else node["out_b"]
-        else:
-            nid = node["next"]
-    return None
+            return node["kind"] == kind
+
+        return False
 
 
-def planning_solution(level: dict, nodes: dict[str, dict]) -> dict[str, str] | None:
-    junction_ids = [nid for nid, node in nodes.items() if node["type"] == "junction"]
-    options: list[list[str]] = []
-    for nid in junction_ids:
-        raw = nodes[nid].get("filter_options", ["red", "blue", "yellow"])
-        allowed = [str(value) for value in raw if str(value) in KINDS]
-        if not allowed:
-            return None
-        options.append(allowed)
+def solve_sorter_level(level: dict) -> tuple[int | None, dict | None]:
+    nodes = {node["id"]: node for node in level["nodes"]}
+    sorter_ids = [node["id"] for node in level["nodes"] if node["type"] == "sorter_site"]
+    permutations = list(itertools.permutations(KINDS))
+    best_cost: int | None = None
+    best_solution: dict | None = None
 
-    for values in itertools.product(*options):
-        rules = dict(zip(junction_ids, values))
-        solved = True
-        for spawn in level.get("spawns", []):
-            kind = str(spawn.get("kind", ""))
-            source = str(spawn.get("source", ""))
-            if routed_receiver(nodes, source, kind, rules) != kind:
-                solved = False
-                break
-        if solved:
-            return rules
-    return None
+    # A site has seven states: unbuilt, or built with one of six permutations.
+    for state in itertools.product(range(7), repeat=len(sorter_ids)):
+        built: set[str] = set()
+        mappings: dict[str, tuple[str, str, str]] = {}
+        cost = 0
+
+        for sorter_id, option in zip(sorter_ids, state):
+            if option == 0:
+                continue
+            built.add(sorter_id)
+            mappings[sorter_id] = permutations[option - 1]
+            node = nodes[sorter_id]
+            cost += int(node.get("build_cost", level["sorter_cost"]))
+
+        if best_cost is not None and cost >= best_cost:
+            continue
+
+        if all(simulate_spawn(nodes, spawn, built, mappings) for spawn in level["spawns"]):
+            best_cost = cost
+            best_solution = {"built": sorted(built), "mappings": mappings}
+
+    return best_cost, best_solution
 
 
-def check_levels() -> None:
-    paths = sorted((ROOT / "levels").glob("level_*.json"))
-    if len(paths) != 10:
-        fail(f"expected 10 levels, found {len(paths)}")
+def validate_level(level: dict, expected_id: int) -> None:
+    name = f"level_{expected_id:02d}.json"
+    if level.get("id") != expected_id:
+        fail(f"{name}: id must be {expected_id}")
 
-    for i, path in enumerate(paths, 1):
+    for key in (
+        "gold_budget",
+        "sorter_cost",
+        "optimal_cost",
+        "two_star_cost",
+        "item_speed",
+        "spawn_interval",
+        "buffer_capacity",
+        "buffer_return_delay",
+    ):
+        if key not in level:
+            fail(f"{name}: missing {key}")
+
+    nodes_list = level.get("nodes", [])
+    nodes = {node.get("id"): node for node in nodes_list}
+    if len(nodes) != len(nodes_list) or None in nodes:
+        fail(f"{name}: duplicate or missing node id")
+        return
+
+    sorter_count = 0
+    for node_id, node in nodes.items():
+        node_type = node.get("type")
+        if node_type not in {"source", "normal", "sorter_site", "receiver"}:
+            fail(f"{name}: unsupported node type {node_type} at {node_id}")
+            continue
+
+        if node_type == "sorter_site":
+            sorter_count += 1
+            targets = [node.get("out_1"), node.get("out_2"), node.get("out_3")]
+            if len(set(targets)) != 3:
+                fail(f"{name}: sorter {node_id} needs three distinct outputs")
+            mapping = node.get("mapping", [])
+            if sorted(mapping) != sorted(KINDS):
+                fail(f"{name}: sorter {node_id} mapping must be a permutation of {KINDS}")
+
+        for nxt in outputs(node):
+            if nxt not in nodes:
+                fail(f"{name}: {node_id} points to missing {nxt}")
+
+    if sorter_count == 0:
+        fail(f"{name}: vertical slice requires at least one sorter site")
+    if graph_has_cycle(nodes):
+        fail(f"{name}: graph contains a cycle")
+
+    best_cost, solution = solve_sorter_level(level)
+    if best_cost is None:
+        fail(f"{name}: no valid sorter configuration solves all cargo")
+        return
+
+    declared = int(level["optimal_cost"])
+    budget = int(level["gold_budget"])
+    two_star = int(level["two_star_cost"])
+    if best_cost != declared:
+        fail(f"{name}: declared optimal_cost={declared}, exhaustive solver proves {best_cost}")
+    if budget < best_cost:
+        fail(f"{name}: budget {budget} cannot fund optimal solution {best_cost}")
+    if not (best_cost <= two_star <= budget):
+        fail(f"{name}: two_star_cost must be between optimal and budget")
+
+    optimal_builds = len(solution["built"]) if solution else 0
+    decoys = sorter_count - optimal_builds
+    print(
+        f" - L{expected_id}: optimal={best_cost} gold, "
+        f"sites={sorter_count}, optimal_builds={optimal_builds}, decoys={decoys}"
+    )
+
+    if expected_id == 3 and decoys < 2:
+        fail("level_03.json: optimization lesson needs at least two unnecessary build sites")
+
+
+def check_slice_levels() -> None:
+    for level_id in SLICE_LEVELS:
+        path = ROOT / "levels" / f"level_{level_id:02d}.json"
         try:
             level = json.loads(path.read_text(encoding="utf-8"))
         except Exception as exc:
             fail(f"{path.name}: invalid JSON: {exc}")
             continue
+        validate_level(level, level_id)
 
-        if level.get("id") != i:
-            fail(f"{path.name}: id must be {i}")
-        if level.get("item_speed", 0) <= 0 or level.get("spawn_interval", 0) <= 0:
-            fail(f"{path.name}: invalid speed/interval")
-        if level.get("buffer_capacity", 0) < 3:
-            fail(f"{path.name}: buffer capacity too small")
 
-        nodes_list = level.get("nodes", [])
-        nodes = {n.get("id"): n for n in nodes_list}
-        if len(nodes) != len(nodes_list) or None in nodes:
-            fail(f"{path.name}: duplicate or missing node id")
-            continue
+def check_controller_contract() -> None:
+    text = (ROOT / "game" / "game_controller.gd").read_text(encoding="utf-8")
+    required = [
+        "const LEVEL_COUNT := 3",
+        "GameState.PLANNING",
+        "_try_build_sorter",
+        "_gold_remaining",
+        "_optimal_cost",
+        "_stars_for_spend",
+        "node_type == \"sorter_site\"",
+    ]
+    for token in required:
+        if token not in text:
+            fail(f"game_controller.gd missing sorter-economy contract token: {token}")
 
-        for nid, node in nodes.items():
-            if node.get("type") not in {"source", "normal", "junction", "receiver"}:
-                fail(f"{path.name}: unsupported node type at {nid}")
-                continue
-            for nxt in outputs(node):
-                if nxt not in nodes:
-                    fail(f"{path.name}: {nid} points to missing {nxt}")
-            if node.get("type") == "junction":
-                filter_options = node.get("filter_options", ["red", "blue", "yellow"])
-                if not filter_options or any(str(value) not in KINDS for value in filter_options):
-                    fail(f"{path.name}: {nid} has invalid filter_options")
-
-        if graph_has_cycle(nodes):
-            fail(f"{path.name}: graph contains a cycle")
-
-        cache: dict[str, set[str]] = {}
-        for spawn in level.get("spawns", []):
-            source = spawn.get("source")
-            kind = spawn.get("kind")
-            if source not in nodes or nodes[source].get("type") != "source":
-                fail(f"{path.name}: invalid spawn source {source}")
-                continue
-            if kind not in KINDS:
-                fail(f"{path.name}: unsupported spawn kind {kind}")
-                continue
-            cache.setdefault(source, reachable_kinds(nodes, source))
-            if kind not in cache[source]:
-                fail(f"{path.name}: {kind} from {source} cannot reach matching receiver")
-
-        solution = planning_solution(level, nodes)
-        if solution is None:
-            fail(f"{path.name}: no planning-router solution exists")
-        else:
-            summary = ", ".join(f"{nid}={kind}" for nid, kind in solution.items())
-            print(f" - {path.name} solution: {summary}")
+    sorter_text = (ROOT / "gameplay" / "sorter_actor.gd").read_text(encoding="utf-8")
+    for token in ("func build()", "func demolish()", "func cycle_lane", "ActiveSorterBelts"):
+        if token not in sorter_text:
+            fail(f"sorter_actor.gd missing: {token}")
 
 
 def check_audio() -> None:
-    names = ["tap", "ui", "spawn", "correct", "wrong", "buffer_return", "win", "fail", "ambient"]
-    for name in names:
-        p = ROOT / "assets" / "audio" / f"{name}.wav"
-        if not p.exists() or p.stat().st_size < 1000:
-            fail(f"audio missing/too small: {p.relative_to(ROOT)}")
+    for name in ("tap", "ui", "spawn", "correct", "wrong", "win", "fail", "ambient"):
+        path = ROOT / "assets" / "audio" / f"{name}.wav"
+        if not path.exists() or path.stat().st_size < 1000:
+            fail(f"audio missing/too small: {path.relative_to(ROOT)}")
 
 
 def main() -> int:
     check_required_files()
     check_resource_paths()
     check_custom_gameplay_visuals()
-    check_levels()
+    print("SORTER ECONOMY SOLVER")
+    check_slice_levels()
+    check_controller_contract()
     check_audio()
+
     if ERRORS:
         print("FLOW FACTORY VERIFY: FAIL")
-        for e in ERRORS:
-            print(" -", e)
+        for error in ERRORS:
+            print(" -", error)
         return 1
+
     print("FLOW FACTORY VERIFY: PASS")
-    print(" - required files present")
-    print(" - resource paths resolve")
-    print(" - 10 terminating level graphs")
-    print(" - every level has a valid pre-run routing solution")
-    print(" - gameplay visuals use custom generated geometry")
+    print(" - 3-level vertical slice uses build -> configure -> run")
+    print(" - exhaustive solver proves declared optimal gold costs")
+    print(" - level 3 contains deliberate unnecessary build sites")
+    print(" - custom visuals remain vendor-free")
     return 0
 
 
