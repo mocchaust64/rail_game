@@ -33,18 +33,22 @@ var _speed_button: Button
 var _debug_row: HBoxContainer
 var _overlay_mode := ""
 
+
 func _ready() -> void:
     _build()
+
 
 func set_level(level_number: int, title: String) -> void:
     _level_label.text = "%02d" % level_number
 
+
 func set_upcoming(kinds: Array) -> void:
     for i in range(_upcoming_icons.size()):
         if i < kinds.size():
-            _upcoming_icons[i].set_kind(String(kinds[i]), true, 1.0 if i == 0 else 0.58)
+            _upcoming_icons[i].set_kind(String(kinds[i]), true, 1.0 if i == 0 else 0.52)
         else:
-            _upcoming_icons[i].set_kind("", false, 0.28)
+            _upcoming_icons[i].set_kind("", false, 0.16)
+
 
 func set_buffer(kinds: Array, capacity: int) -> void:
     while _buffer_icons.size() < capacity:
@@ -58,21 +62,27 @@ func set_buffer(kinds: Array, capacity: int) -> void:
     var pressure := float(kinds.size()) / float(maxi(1, capacity))
     _apply_buffer_pressure(pressure)
 
+
 func flash_buffer() -> void:
     if _buffer_panel == null:
         return
     var tween := Motion.tween(_buffer_panel)
-    tween.tween_property(_buffer_panel, "scale", Vector2(1.04, 1.04), 0.07)
-    tween.tween_property(_buffer_panel, "scale", Vector2.ONE, 0.11)
+    tween.tween_property(_buffer_panel, "scale", Vector2(1.055, 1.055), 0.065)
+    tween.tween_property(_buffer_panel, "scale", Vector2.ONE, 0.105)
+
 
 func set_tutorial_visible(value: bool, text: String = "") -> void:
-    _tutorial_label.text = tr("UI_TUTORIAL_TAP") if text.is_empty() else text
+    # The junction itself pulses; this is deliberately icon-only so the first
+    # screen reads like the reference instead of a tutorial card.
+    _tutorial_label.text = "↓"
     _tutorial.visible = value
+
 
 func hide_overlay() -> void:
     _overlay_mode = ""
     _dim.visible = false
     _overlay.visible = false
+
 
 func show_win(duration: float, mistakes: int) -> void:
     _overlay_mode = "win"
@@ -85,6 +95,7 @@ func show_win(duration: float, mistakes: int) -> void:
     _debug_row.visible = false
     _show_overlay()
 
+
 func show_fail(reason: String) -> void:
     _overlay_mode = "fail"
     _overlay_title.text = tr("UI_BUFFER_FULL")
@@ -94,6 +105,7 @@ func show_fail(reason: String) -> void:
     _settings_row.visible = false
     _debug_row.visible = false
     _show_overlay()
+
 
 func show_pause() -> void:
     _overlay_mode = "pause"
@@ -107,6 +119,7 @@ func show_pause() -> void:
     _refresh_setting_buttons()
     _show_overlay()
 
+
 func _show_overlay() -> void:
     _dim.visible = true
     _overlay.visible = true
@@ -118,6 +131,7 @@ func _show_overlay() -> void:
     tween.tween_property(_overlay, "scale", Vector2.ONE, 0.18)
     tween.tween_property(_overlay, "modulate:a", 1.0, 0.13)
 
+
 func _on_overlay_primary() -> void:
     AudioService.play("ui", 1.0, -7.0)
     match _overlay_mode:
@@ -125,10 +139,12 @@ func _on_overlay_primary() -> void:
         "fail": restart_requested.emit()
         "pause": resume_requested.emit()
 
+
 func _on_overlay_secondary() -> void:
     AudioService.play("ui", 0.96, -7.0)
     if _overlay_mode in ["win", "pause"]:
         restart_requested.emit()
+
 
 func _build() -> void:
     var root := Control.new()
@@ -139,25 +155,24 @@ func _build() -> void:
 
     var insets := _safe_area_insets()
 
-    # Small translucent controls only. The reference leaves the 3D scene as the
-    # hero rather than framing it with large white cards.
+    # Minimal top controls: enough utility for an MVP, no large banner/card.
     var top := HBoxContainer.new()
     top.set_anchors_preset(Control.PRESET_TOP_WIDE)
-    top.offset_left = 28
-    top.offset_right = -28
-    top.offset_top = 24 + insets.x
-    top.offset_bottom = 82 + insets.x
-    top.add_theme_constant_override("separation", 10)
+    top.offset_left = 22
+    top.offset_right = -22
+    top.offset_top = 18 + insets.x
+    top.offset_bottom = 66 + insets.x
+    top.add_theme_constant_override("separation", 8)
     root.add_child(top)
 
     _level_label = Label.new()
     _level_label.text = "01"
-    _level_label.custom_minimum_size = Vector2(58, 52)
+    _level_label.custom_minimum_size = Vector2(44, 44)
     _level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     _level_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-    _level_label.add_theme_font_size_override("font_size", _font_size(22))
-    _level_label.add_theme_color_override("font_color", Color("#4B4743"))
-    _level_label.add_theme_stylebox_override("normal", _panel_style(Color("#FFF9F0D9"), 18, Color(0,0,0,0.10), 6))
+    _level_label.add_theme_font_size_override("font_size", _font_size(18))
+    _level_label.add_theme_color_override("font_color", Color("#625A51"))
+    _level_label.add_theme_stylebox_override("normal", _panel_style(Color("#F6E8D7B8"), 15, Color(0, 0, 0, 0.05), 3))
     top.add_child(_level_label)
 
     var spacer := Control.new()
@@ -166,62 +181,66 @@ func _build() -> void:
 
     var restart := Button.new()
     restart.text = "↻"
-    restart.custom_minimum_size = Vector2(52, 52)
-    restart.add_theme_font_size_override("font_size", _font_size(25))
+    restart.custom_minimum_size = Vector2(44, 44)
+    restart.add_theme_font_size_override("font_size", _font_size(22))
     _style_button(restart, false)
     restart.pressed.connect(func() -> void: restart_requested.emit())
     top.add_child(restart)
 
     var pause := Button.new()
     pause.text = "Ⅱ"
-    pause.custom_minimum_size = Vector2(52, 52)
-    pause.add_theme_font_size_override("font_size", _font_size(20))
+    pause.custom_minimum_size = Vector2(44, 44)
+    pause.add_theme_font_size_override("font_size", _font_size(17))
     _style_button(pause, false)
     pause.pressed.connect(func() -> void: pause_requested.emit())
     top.add_child(pause)
 
+    # Global future queue remains because it is planning information, but the
+    # card is gone. It now reads as four loose balls above the feeder area.
     var upcoming := PanelContainer.new()
     upcoming.set_anchors_preset(Control.PRESET_CENTER_TOP)
-    upcoming.position = Vector2(-145, 86 + insets.x)
-    upcoming.size = Vector2(290, 66)
-    upcoming.add_theme_stylebox_override("panel", _panel_style(Color("#FFF9F0C7"), 20, Color(0,0,0,0.08), 5))
+    upcoming.position = Vector2(-116, 70 + insets.x)
+    upcoming.size = Vector2(232, 52)
+    upcoming.add_theme_stylebox_override("panel", _panel_style(Color(1, 1, 1, 0), 0, Color(0, 0, 0, 0), 0))
     root.add_child(upcoming)
 
     var upcoming_row := HBoxContainer.new()
     upcoming_row.alignment = BoxContainer.ALIGNMENT_CENTER
-    upcoming_row.add_theme_constant_override("separation", 2)
+    upcoming_row.add_theme_constant_override("separation", -1)
     upcoming.add_child(upcoming_row)
     for i in range(4):
         var icon := CargoIcon.new()
-        icon.custom_minimum_size = Vector2(56 if i == 0 else 48, 56 if i == 0 else 48)
+        icon.custom_minimum_size = Vector2(50 if i == 0 else 44, 50 if i == 0 else 44)
         upcoming_row.add_child(icon)
         _upcoming_icons.append(icon)
 
     _tutorial = PanelContainer.new()
     _tutorial.set_anchors_preset(Control.PRESET_CENTER_TOP)
-    _tutorial.position = Vector2(-185, 166 + insets.x)
-    _tutorial.size = Vector2(370, 54)
-    _tutorial.add_theme_stylebox_override("panel", _panel_style(Color("#4C4844E6"), 18, Color(0,0,0,0.10), 5))
+    _tutorial.position = Vector2(-25, 123 + insets.x)
+    _tutorial.size = Vector2(50, 42)
+    _tutorial.add_theme_stylebox_override("panel", _panel_style(Color(1, 1, 1, 0), 0, Color(0, 0, 0, 0), 0))
     root.add_child(_tutorial)
     _tutorial_label = Label.new()
     _tutorial_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     _tutorial_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-    _tutorial_label.add_theme_font_size_override("font_size", _font_size(16))
-    _tutorial_label.add_theme_color_override("font_color", Color.WHITE)
+    _tutorial_label.add_theme_font_size_override("font_size", _font_size(28))
+    _tutorial_label.add_theme_color_override("font_color", Color("#6B6258D8"))
     _tutorial.add_child(_tutorial_label)
     _tutorial.visible = false
 
+    # Reference-style waiting buffer: circular sand-coloured sockets, no white
+    # container chrome or label. Occupied slots simply reveal their cargo icon.
     _buffer_panel = PanelContainer.new()
     _buffer_panel.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-    _buffer_panel.position = Vector2(-205, -98 - insets.y)
-    _buffer_panel.size = Vector2(410, 68)
-    _buffer_panel.pivot_offset = Vector2(205, 34)
-    _buffer_panel.add_theme_stylebox_override("panel", _panel_style(Color("#FFF9F0C7"), 21, Color(0,0,0,0.09), 6))
+    _buffer_panel.position = Vector2(-190, -82 - insets.y)
+    _buffer_panel.size = Vector2(380, 58)
+    _buffer_panel.pivot_offset = Vector2(190, 29)
+    _buffer_panel.add_theme_stylebox_override("panel", _panel_style(Color(1, 1, 1, 0), 0, Color(0, 0, 0, 0), 0))
     root.add_child(_buffer_panel)
 
     _buffer_row = HBoxContainer.new()
     _buffer_row.alignment = BoxContainer.ALIGNMENT_CENTER
-    _buffer_row.add_theme_constant_override("separation", 5)
+    _buffer_row.add_theme_constant_override("separation", 8)
     _buffer_panel.add_child(_buffer_row)
     for i in range(6):
         _add_buffer_slot()
@@ -238,7 +257,7 @@ func _build() -> void:
     _overlay.size = Vector2(660, 540)
     _overlay.pivot_offset = Vector2(330, 270)
     _overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-    _overlay.add_theme_stylebox_override("panel", _panel_style(Color("#FFF9F2FA"), 34, Color(0,0,0,0.22), 22))
+    _overlay.add_theme_stylebox_override("panel", _panel_style(Color("#FFF9F2FA"), 34, Color(0, 0, 0, 0.22), 22))
     root.add_child(_overlay)
 
     var margin := MarginContainer.new()
@@ -304,23 +323,46 @@ func _build() -> void:
 
     hide_overlay()
 
+
 func _add_buffer_slot() -> void:
     var panel := PanelContainer.new()
     panel.custom_minimum_size = Vector2(54, 54)
-    panel.add_theme_stylebox_override("panel", _panel_style(Color("#E5DED4A8"), 16, Color(0,0,0,0.02), 1))
+    panel.add_theme_stylebox_override("panel", _buffer_slot_style(Color("#D7C8B2CC")))
     var icon := CargoIcon.new()
     icon.set_kind("", false)
     panel.add_child(icon)
     _buffer_row.add_child(panel)
     _buffer_icons.append(icon)
 
+
 func _apply_buffer_pressure(pressure: float) -> void:
-    var bg := Color("#FFF9F0C7")
+    var empty_colour := Color("#D7C8B2CC")
     if pressure >= 0.99:
-        bg = Color("#F5C4B8E8")
+        empty_colour = Color("#E8AB99E6")
     elif pressure >= 0.66:
-        bg = Color("#F5DEB6DD")
-    _buffer_panel.add_theme_stylebox_override("panel", _panel_style(bg, 21, Color(0,0,0,0.09), 6))
+        empty_colour = Color("#E6C79FDD")
+    for icon in _buffer_icons:
+        var slot := icon.get_parent() as PanelContainer
+        if slot != null:
+            slot.add_theme_stylebox_override("panel", _buffer_slot_style(empty_colour))
+
+
+func _buffer_slot_style(bg: Color) -> StyleBoxFlat:
+    var style := StyleBoxFlat.new()
+    style.bg_color = bg
+    style.corner_radius_top_left = 27
+    style.corner_radius_top_right = 27
+    style.corner_radius_bottom_left = 27
+    style.corner_radius_bottom_right = 27
+    style.shadow_color = Color(0, 0, 0, 0.08)
+    style.shadow_size = 3
+    style.shadow_offset = Vector2(0, 2)
+    style.content_margin_left = 3
+    style.content_margin_right = 3
+    style.content_margin_top = 3
+    style.content_margin_bottom = 3
+    return style
+
 
 func _make_setting_button(handler: Callable) -> Button:
     var b := Button.new()
@@ -331,22 +373,27 @@ func _make_setting_button(handler: Callable) -> Button:
     _settings_row.add_child(b)
     return b
 
+
 func _toggle_audio() -> void:
     AudioService.set_enabled(not SaveService.audio_enabled)
     _refresh_setting_buttons()
+
 
 func _toggle_haptic() -> void:
     SaveService.set_haptic_enabled(not SaveService.haptic_enabled)
     _refresh_setting_buttons()
 
+
 func _toggle_reduced_motion() -> void:
     SaveService.set_reduced_motion(not SaveService.reduced_motion)
     _refresh_setting_buttons()
+
 
 func _toggle_large_text() -> void:
     SaveService.set_large_text(not SaveService.large_text)
     _refresh_setting_buttons()
     text_scale_changed.emit()
+
 
 func _cycle_game_speed() -> void:
     var options: Array = SaveService.SPEED_OPTIONS
@@ -355,6 +402,7 @@ func _cycle_game_speed() -> void:
     _refresh_setting_buttons()
     game_speed_changed.emit()
 
+
 func _refresh_setting_buttons() -> void:
     _sound_button.text = tr("UI_SOUND") % (tr("UI_ON") if SaveService.audio_enabled else tr("UI_OFF"))
     _haptic_button.text = tr("UI_HAPTIC") % (tr("UI_ON") if SaveService.haptic_enabled else tr("UI_OFF"))
@@ -362,30 +410,33 @@ func _refresh_setting_buttons() -> void:
     _text_button.text = tr("UI_TEXT_SIZE") % (tr("UI_LARGE") if SaveService.large_text else tr("UI_NORMAL"))
     _speed_button.text = tr("UI_GAME_SPEED") % ("%d%%" % roundi(SaveService.game_speed * 100.0))
 
+
 func _font_size(base: int) -> int:
     return int(round(float(base) * SaveService.text_scale()))
 
+
 func _style_button(button: Button, primary: bool) -> void:
     var normal := StyleBoxFlat.new()
-    normal.bg_color = Color("#D97858") if primary else Color("#FFF9F0D9")
-    normal.corner_radius_top_left = 16
-    normal.corner_radius_top_right = 16
-    normal.corner_radius_bottom_left = 16
-    normal.corner_radius_bottom_right = 16
-    normal.content_margin_left = 18
-    normal.content_margin_right = 18
-    normal.content_margin_top = 10
-    normal.content_margin_bottom = 10
+    normal.bg_color = Color("#D97858") if primary else Color("#F6E8D7B8")
+    normal.corner_radius_top_left = 15
+    normal.corner_radius_top_right = 15
+    normal.corner_radius_bottom_left = 15
+    normal.corner_radius_bottom_right = 15
+    normal.content_margin_left = 16
+    normal.content_margin_right = 16
+    normal.content_margin_top = 9
+    normal.content_margin_bottom = 9
     var pressed := normal.duplicate() as StyleBoxFlat
-    pressed.bg_color = Color("#C8684A") if primary else Color("#E8DED1")
+    pressed.bg_color = Color("#C8684A") if primary else Color("#E3D4C1D0")
     button.add_theme_stylebox_override("normal", normal)
     button.add_theme_stylebox_override("hover", normal)
     button.add_theme_stylebox_override("pressed", pressed)
     button.add_theme_stylebox_override("focus", normal)
-    var fc := Color.WHITE if primary else Color("#4B4743")
+    var fc := Color.WHITE if primary else Color("#625A51")
     button.add_theme_color_override("font_color", fc)
     button.add_theme_color_override("font_hover_color", fc)
     button.add_theme_color_override("font_pressed_color", fc)
+
 
 func _panel_style(bg: Color, radius: int, shadow: Color, shadow_size: int) -> StyleBoxFlat:
     var style := StyleBoxFlat.new()
@@ -397,11 +448,12 @@ func _panel_style(bg: Color, radius: int, shadow: Color, shadow_size: int) -> St
     style.shadow_color = shadow
     style.shadow_size = shadow_size
     style.shadow_offset = Vector2(0, 4)
-    style.content_margin_left = 12
-    style.content_margin_right = 12
-    style.content_margin_top = 8
-    style.content_margin_bottom = 8
+    style.content_margin_left = 8
+    style.content_margin_right = 8
+    style.content_margin_top = 5
+    style.content_margin_bottom = 5
     return style
+
 
 func _build_theme() -> Theme:
     var font := SystemFont.new()
@@ -410,6 +462,7 @@ func _build_theme() -> Theme:
     var theme := Theme.new()
     theme.default_font = font
     return theme
+
 
 func _safe_area_insets() -> Vector2:
     var safe := DisplayServer.get_display_safe_area()
