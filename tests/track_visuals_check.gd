@@ -12,7 +12,7 @@ func _ready() -> void:
     ])
     var path := TrackVisuals.create_path(self, points)
 
-    for layer_name in ["Roadbed", "InnerBed", "Rails"]:
+    for layer_name in ["GuideRails", "BeltBase", "MovingBelt"]:
         var layer := path.get_node_or_null(NodePath(layer_name))
         if not layer is MeshInstance3D:
             failures.append("%s must be one continuous mesh" % layer_name)
@@ -30,17 +30,11 @@ func _ready() -> void:
                 failures.append("%s contains a non-finite vertex" % layer_name)
                 break
 
-    var supports := path.get_node_or_null(NodePath("Supports"))
-    if not supports is MultiMeshInstance3D:
-        failures.append("rail supports must stay MultiMesh-batched")
-    var fasteners := path.get_node_or_null(NodePath("RailFasteners"))
-    if not fasteners is MultiMeshInstance3D:
-        failures.append("rail fasteners must stay MultiMesh-batched")
-    var motion := path.get_node_or_null(NodePath("TrackMotion")) as TrackMotion
+    var motion := path.get_node_or_null(NodePath("BeltMotion")) as TrackMotion
     if motion == null:
-        failures.append("track must include continuous moving centre ribs")
-    elif motion.get_node_or_null(NodePath("MovingBeltRibs")) == null:
-        failures.append("moving centre ribs are missing")
+        failures.append("track must include moving conveyor seams")
+    elif motion.get_node_or_null(NodePath("MovingBeltSeams")) == null:
+        failures.append("moving conveyor seams are missing")
 
     var junction_nodes := {
         "S": {"id": "S", "type": "source", "next": "J"},
@@ -59,7 +53,6 @@ func _ready() -> void:
     add_child(junction)
     junction.configure(junction_nodes["J"], junction_positions)
 
-    junction.state = 0
     var angle_a := junction._angle_for_state(0)
     var angle_b := junction._angle_for_state(1)
     var switch_arc := absf(wrapf(angle_a - angle_b, -PI, PI))
@@ -68,24 +61,27 @@ func _ready() -> void:
 
     var physical_rail := junction.get_node_or_null(NodePath("PhysicalSwitchRail")) as Node3D
     if physical_rail == null:
-        failures.append("junction must expose the physical moving rail")
+        failures.append("junction must expose the long moving conveyor")
     var switch_pivot := junction.get_node_or_null(NodePath("SwitchPivot")) as MeshInstance3D
     if switch_pivot == null or not switch_pivot.mesh is CylinderMesh:
-        failures.append("junction needs a small hidden mechanical pivot")
-    elif (switch_pivot.mesh as CylinderMesh).top_radius > 0.38:
+        failures.append("junction needs a small mechanical pivot")
+    elif (switch_pivot.mesh as CylinderMesh).top_radius > 0.30:
         failures.append("junction pivot is too large and reads like a UI button")
 
-    # Gameplay must not route into the new branch before the rail has actually
-    # finished moving there.
+    # Route must stay old until the physical conveyor finishes moving.
     junction.state = 0
     junction._perform_toggle(1)
     if junction.state != 0:
-        failures.append("junction route changed before the physical rail connected")
+        failures.append("junction route changed before the conveyor connected")
     if junction.selected_state() != 1:
-        failures.append("junction did not remember the requested visual target")
+        failures.append("junction did not remember the requested target")
+
+    # A duplicated mouse/touch event during the same click must be ignored, not
+    # queued. This is the regression that made the user's rail rotate back.
+    junction.request_toggle()
     junction._on_toggle_finished()
     if junction.state != 1:
-        failures.append("junction did not commit route when rail movement finished")
+        failures.append("duplicate input made the switch return to its old route")
 
     remove_child(junction)
     junction.free()
@@ -94,7 +90,7 @@ func _ready() -> void:
     VisualFactory._material_cache.clear()
 
     if failures.is_empty():
-        print("track visuals: PASS (moving custom rail + physical route commit)")
+        print("track visuals: PASS (smooth guide rails + long moving conveyor + stable tap)")
         get_tree().quit(0)
         return
     for failure in failures:
