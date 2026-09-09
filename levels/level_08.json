@@ -6,24 +6,114 @@
   "buffer_capacity": 3,
   "buffer_return_delay": 2.4,
   "nodes": [
-    {"id": "S1", "pos": [-2.3, -5.4], "type": "source", "next": "J1"},
-    {"id": "S2", "pos": [2.3, -5.4], "type": "source", "next": "J2"},
-    {"id": "J1", "pos": [-1.7, -0.8], "type": "junction", "out_a": "R", "out_b": "B", "initial_state": 1},
-    {"id": "J2", "pos": [1.7, -0.8], "type": "junction", "out_a": "B", "out_b": "Y", "initial_state": 0},
-    {"id": "R", "pos": [-3.05, 3.7], "type": "receiver", "kind": "red"},
-    {"id": "B", "pos": [0.0, 3.7], "type": "receiver", "kind": "blue"},
-    {"id": "Y", "pos": [3.05, 3.7], "type": "receiver", "kind": "yellow"}
+    {
+      "id": "S1",
+      "pos": [
+        -2.3,
+        -5.4
+      ],
+      "type": "source",
+      "next": "J1"
+    },
+    {
+      "id": "S2",
+      "pos": [
+        2.3,
+        -5.4
+      ],
+      "type": "source",
+      "next": "J2"
+    },
+    {
+      "id": "J1",
+      "pos": [
+        -1.7,
+        -0.8
+      ],
+      "type": "junction",
+      "out_a": "R",
+      "out_b": "B",
+      "initial_state": 1
+    },
+    {
+      "id": "J2",
+      "pos": [
+        1.7,
+        -0.8
+      ],
+      "type": "junction",
+      "out_a": "B",
+      "out_b": "Y",
+      "initial_state": 0
+    },
+    {
+      "id": "R",
+      "pos": [
+        -3.05,
+        3.7
+      ],
+      "type": "receiver",
+      "kind": "red"
+    },
+    {
+      "id": "B",
+      "pos": [
+        0,
+        4.25
+      ],
+      "type": "receiver",
+      "kind": "blue"
+    },
+    {
+      "id": "Y",
+      "pos": [
+        3.05,
+        3.7
+      ],
+      "type": "receiver",
+      "kind": "yellow"
+    }
   ],
   "spawns": [
-    {"kind": "blue", "source": "S1"},
-    {"kind": "blue", "source": "S2"},
-    {"kind": "red", "source": "S1"},
-    {"kind": "yellow", "source": "S2"},
-    {"kind": "red", "source": "S1"},
-    {"kind": "blue", "source": "S2"},
-    {"kind": "blue", "source": "S1"},
-    {"kind": "yellow", "source": "S2"},
-    {"kind": "red", "source": "S1"},
-    {"kind": "yellow", "source": "S2"}
+    {
+      "kind": "blue",
+      "source": "S1"
+    },
+    {
+      "kind": "blue",
+      "source": "S2"
+    },
+    {
+      "kind": "red",
+      "source": "S1"
+    },
+    {
+      "kind": "yellow",
+      "source": "S2"
+    },
+    {
+      "kind": "red",
+      "source": "S1"
+    },
+    {
+      "kind": "blue",
+      "source": "S2"
+    },
+    {
+      "kind": "blue",
+      "source": "S1"
+    },
+    {
+      "kind": "yellow",
+      "source": "S2"
+    },
+    {
+      "kind": "red",
+      "source": "S1"
+    },
+    {
+      "kind": "yellow",
+      "source": "S2"
+    }
   ]
 }
