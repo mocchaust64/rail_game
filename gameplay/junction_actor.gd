@@ -2,6 +2,7 @@ class_name JunctionActor
 extends Node3D
 
 const KENNEY_CONVEYOR: Mesh = preload("res://assets/vendor/kenney_factory_kit/conveyor_middle_cc0.obj")
+const SWITCH_REACH := 0.52
 
 var junction_id: String = ""
 var out_a: String = ""
@@ -87,7 +88,8 @@ func _target_angle() -> float:
     var path := TrackGeometry.path_for(junction_id, target_id, start, finish)
     var dir := finish - start
     if path.size() >= 2:
-        dir = path[1] - path[0]
+        var mouth := TrackGeometry.sample_distance(path, minf(SWITCH_REACH, TrackGeometry.length(path)))
+        dir = (mouth["position"] as Vector3) - start
     if dir.length_squared() < 0.0001:
         return 0.0
     dir = dir.normalized()
@@ -103,9 +105,10 @@ func _build_visual() -> void:
     # Small neutral pivot under the conveyor. It is intentionally quieter than
     # cargo/receivers so the selected physical rail, not a button, reads first.
     var hub := MeshInstance3D.new()
+    hub.name = "SwitchBase"
     var hub_mesh := CylinderMesh.new()
-    hub_mesh.top_radius = 0.30
-    hub_mesh.bottom_radius = 0.33
+    hub_mesh.top_radius = 0.47
+    hub_mesh.bottom_radius = 0.50
     hub_mesh.height = 0.11
     hub_mesh.radial_segments = 24
     hub.mesh = hub_mesh
@@ -124,7 +127,7 @@ func _build_visual() -> void:
     authored.mesh = KENNEY_CONVEYOR
     authored.scale = Vector3(1.42, 0.30, 0.56)
     authored.position = Vector3(0, 0.115, 0.27)
-    authored.material_override = VisualFactory.material(Color("#777A76"), 0.40, 0.0, 0.15)
+    authored.material_override = VisualFactory.material(VisualFactory.BELT_INNER, 0.46, 0.0, 0.10)
     _switch_arm.add_child(authored)
 
     var belt := MeshInstance3D.new()

@@ -176,5 +176,5 @@ static func _kenney_detail_layer(parent: Node3D, points: PackedVector3Array) -> 
     var instance := MultiMeshInstance3D.new()
     instance.name = "KenneyConveyorDetail"
     instance.multimesh = multi
-    instance.material_override = VisualFactory.material(Color("#777A76"), 0.42, 0.0, 0.12)
+    instance.material_override = VisualFactory.material(VisualFactory.BELT_INNER, 0.48, 0.0, 0.08)
     parent.add_child(instance)
