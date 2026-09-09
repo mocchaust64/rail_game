@@ -44,7 +44,10 @@ func _read_save(path: String) -> Dictionary:
         return {}
     var text := file.get_as_text()
     file.close()
-    var parsed: Variant = JSON.parse_string(text)
+    var json := JSON.new()
+    if json.parse(text) != OK:
+        return {}
+    var parsed: Variant = json.data
     if typeof(parsed) != TYPE_DICTIONARY:
         return {}
     return parsed as Dictionary

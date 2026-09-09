@@ -1,4 +1,4 @@
-extends SceneTree
+extends Node
 # Headless regression check for decoration/gameplay overlap.
 #
 # Decoration props are placed from a fixed layout while receivers and sources
@@ -11,7 +11,7 @@ const BLOCKING_TYPES := ["receiver", "source"]
 const EXPECTED_DECOR_NODES := 22
 
 
-func _initialize() -> void:
+func _ready() -> void:
 	var failures: Array[String] = []
 	var dir := DirAccess.open("res://levels")
 	var level_files: Array[String] = []
@@ -27,12 +27,12 @@ func _initialize() -> void:
 
 	if failures.is_empty():
 		print("prop clearance: PASS (%d levels)" % level_files.size())
-		quit(0)
+		get_tree().quit(0)
 		return
 	for line in failures:
 		printerr(line)
 	printerr("prop clearance: FAIL (%d violations)" % failures.size())
-	quit(1)
+	get_tree().quit(1)
 
 
 func _check_level(path: String) -> Array[String]:
@@ -48,7 +48,7 @@ func _check_level(path: String) -> Array[String]:
 			occupied.append(Vector2(float(p[0]), float(p[1])))
 
 	var world := Node3D.new()
-	root.add_child(world)
+	add_child(world)
 	VisualFactory.create_floor(world, occupied)
 
 	var violations: Array[String] = []
@@ -61,7 +61,7 @@ func _check_level(path: String) -> Array[String]:
 					"level %02d: prop at (%.2f, %.2f) is %.2f from actor at (%.2f, %.2f), needs %.2f"
 					% [level_id, flat.x, flat.y, d, point.x, point.y, CLEARANCE_RADIUS]
 				)
-	root.remove_child(world)
+	remove_child(world)
 	world.free()
 	return violations
 
@@ -91,7 +91,7 @@ func _check_layout_is_not_stripped(level_files: Array[String]) -> Array[String]:
 				var p: Array = node["pos"]
 				occupied.append(Vector2(float(p[0]), float(p[1])))
 		var world := Node3D.new()
-		root.add_child(world)
+		add_child(world)
 		VisualFactory.create_floor(world, occupied)
 		var kept := _collect_props(world).size()
 		if kept < EXPECTED_DECOR_NODES:
@@ -99,7 +99,7 @@ func _check_layout_is_not_stripped(level_files: Array[String]) -> Array[String]:
 				"level %02d: only %d of %d decoration nodes survived the clearance filter"
 				% [int(level["id"]), kept, EXPECTED_DECOR_NODES]
 			)
-		root.remove_child(world)
+		remove_child(world)
 		world.free()
 	return problems
 
@@ -107,11 +107,11 @@ func _check_layout_is_not_stripped(level_files: Array[String]) -> Array[String]:
 # The guard itself must work: drop an actor onto a known prop and that prop goes.
 func _check_filter_actually_drops() -> Array[String]:
 	var world := Node3D.new()
-	root.add_child(world)
+	add_child(world)
 	var on_top_of_a_barrel: Array[Vector2] = [Vector2(-4.12, -1.95)]
 	VisualFactory.create_floor(world, on_top_of_a_barrel)
 	var kept := _collect_props(world).size()
-	root.remove_child(world)
+	remove_child(world)
 	world.free()
 	if kept >= EXPECTED_DECOR_NODES:
 		return ["clearance filter is a no-op: %d nodes kept with an actor placed on a prop" % kept]

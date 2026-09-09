@@ -42,9 +42,20 @@ func _ready() -> void:
     if incoming_tangent.dot(right_tangent) < 0.88:
         failures.append("right branch does not share the junction tangent")
 
-    for edge in [left, right]:
+    for raw_edge in [left, right]:
+        var edge: PackedVector3Array = raw_edge
         var curve_length := TrackGeometry.length(edge)
         var straight := edge[0].distance_to(edge[edge.size() - 1])
+        var forward := edge[edge.size() - 1] - edge[0]
+        for i in range(edge.size()):
+            if not edge[i].is_finite():
+                failures.append("curve contains a non-finite sample")
+                break
+            if i > 0:
+                var step := edge[i] - edge[i - 1]
+                if step.length_squared() < 0.000001 or step.dot(forward) <= 0.0:
+                    failures.append("curve samples stop or reverse toward their target")
+                    break
         if curve_length + 0.001 < straight:
             failures.append("curve length cannot be shorter than its chord")
         if curve_length > straight * 1.30:
@@ -54,6 +65,11 @@ func _ready() -> void:
         var tangent: Vector3 = sampled["tangent"]
         if tangent.length() < 0.98:
             failures.append("arc-length sample returned an invalid tangent")
+
+        var at_start: Vector3 = TrackGeometry.sample_distance(edge, -1.0)["position"]
+        var at_end: Vector3 = TrackGeometry.sample_distance(edge, curve_length + 1.0)["position"]
+        if not at_start.is_equal_approx(edge[0]) or not at_end.is_equal_approx(edge[edge.size() - 1]):
+            failures.append("distance sampling does not clamp to path endpoints")
 
     var fallback_start := Vector3(1, 0, 1)
     var fallback_end := Vector3(2, 0, 2)

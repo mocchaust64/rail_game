@@ -19,8 +19,9 @@ const CAMERA_POSITION := Vector3(0.0, 16.2, 12.6)
 const CAMERA_TARGET := Vector3(0, 0.25, 0.15)
 const FRAME_WIDTH := 6.4
 const FRAME_DEPTH := 9.4
+const FRAME_SIDE_PADDING := 1.75
 const MIN_FRAME_SCALE := 0.82
-const MAX_FRAME_SCALE := 1.13
+const MAX_FRAME_SCALE := 1.60
 
 const BOUNCE_POSITION := Vector3(-3.8, 4.2, 5.0)
 const BOUNCE_ENERGY := 0.42
@@ -112,7 +113,10 @@ func frame_positions(positions: Dictionary) -> void:
             min_z = minf(min_z, p.z)
             max_z = maxf(max_z, p.z)
 
-    var width := maxf(1.0, max_x - min_x)
+    # Perspective enlarges the receiver row nearest the camera. Padding the
+    # graph's horizontal bounds keeps the machines visible without letting
+    # environment props affect framing.
+    var width := maxf(1.0, max_x - min_x + FRAME_SIDE_PADDING * 2.0)
     var depth := maxf(1.0, max_z - min_z)
     var scale := clampf(maxf(width / FRAME_WIDTH, depth / FRAME_DEPTH), MIN_FRAME_SCALE, MAX_FRAME_SCALE)
     var centre_x := (min_x + max_x) * 0.5

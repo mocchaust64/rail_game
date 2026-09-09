@@ -5,14 +5,14 @@
 Composition
 
 - warm full-bleed play surface replaces the floating white prototype board
-- closer perspective camera auto-frames each level from gameplay anchors
+- perspective camera auto-frames each level from gameplay anchors with enough side padding to keep the near receiver row on-screen
 - all level JSON coordinates remain identical to `main`; composition comes from camera framing and curved presentation paths, so puzzle timing is not altered by this visual pass
 - source preview is now a physical three-slot feeder lane instead of a floating icon
 
 Track presentation
 
 - `gameplay/track_geometry.gd` builds deterministic sampled Bézier paths from the existing graph
-- `gameplay/track_visuals.gd` renders those curves with MultiMesh layers so curved belts do not explode node count on mobile
+- `gameplay/track_visuals.gd` renders the belt, base and rails as continuous strip meshes; repeated slats remain MultiMesh-batched
 - cargo samples the same arc-length path the renderer draws, so it cannot cut across a visual curve
 - junction arrows use the outgoing curve tangent rather than pointing directly at the receiver
 
@@ -29,8 +29,10 @@ Feel
 
 Checks
 
-- added `tests/track_geometry_check.tscn` for endpoints, Y-split tangents, arc-length sampling and straight fallback
-- standard Godot QA now runs the track geometry check
+- added track geometry, continuous-track visual and portrait camera-framing checks
+- fixed the prop-clearance runner so project autoload dependencies compile during the check
+- headless QA no longer starts audio playback or logs corrupt-save recovery as an engine error
+- Godot import QA uses the native `--import` command instead of the crashing `--editor --quit` combination
 - source verifier requires the shared track geometry/renderer files so they cannot be removed as apparent dead code
 
 ## 0.3.2

@@ -9,13 +9,16 @@ try { & $Godot --version | Out-Null } catch {
   exit 2
 }
 
-& $Godot --headless --path $Root --editor --quit
+& $Godot --headless --path $Root --import
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & $Godot --headless --path $Root --quit-after 5
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 $SceneChecks = @(
+  "res://tests/prop_clearance_check.tscn",
   "res://tests/track_geometry_check.tscn",
+  "res://tests/track_visuals_check.tscn",
+  "res://tests/camera_frame_check.tscn",
   "res://tests/tap_radius_check.tscn",
   "res://tests/save_recovery_check.tscn",
   "res://tests/analytics_check.tscn",
@@ -32,9 +35,6 @@ foreach ($Scene in $SceneChecks) {
   & $Godot --headless --path $Root $Scene
   if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 }
-
-& $Godot --headless --path $Root --script res://tests/prop_clearance_check.gd
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 & $Godot --headless --path $Root res://tests/game_flow_check.tscn
 exit $LASTEXITCODE

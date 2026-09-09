@@ -80,46 +80,6 @@ static func create_floor(parent: Node3D, occupied: Array = []) -> Node3D:
     return root
 
 
-static func create_track(parent: Node3D, from_pos: Vector3, to_pos: Vector3) -> Node3D:
-    var root := Node3D.new()
-    root.name = "Conveyor"
-    parent.add_child(root)
-
-    var midpoint := (from_pos + to_pos) * 0.5
-    var length := from_pos.distance_to(to_pos)
-    var angle := atan2(to_pos.x - from_pos.x, to_pos.z - from_pos.z)
-
-    # Dark rubber belt with a lighter inset and metal side rails, matching the
-    # reference's chunky toy-conveyor silhouette.
-    var base := _box(Vector3(0.90, 0.16, length + 0.10), MACHINE_DARK, 0.64)
-    base.position = midpoint + Vector3(0, 0.025, 0)
-    base.rotation.y = angle
-    root.add_child(base)
-
-    var belt := _box(Vector3(0.66, 0.105, maxf(0.12, length - 0.03)), BELT_COLOR, 0.66)
-    belt.position = midpoint + Vector3(0, 0.145, 0)
-    belt.rotation.y = angle
-    root.add_child(belt)
-
-    for side in [-0.43, 0.43]:
-        var rail := _box(Vector3(0.075, 0.15, maxf(0.12, length + 0.06)), RAIL_COLOR, 0.32, 0.0, 0.18)
-        rail.position = midpoint + Vector3(0, 0.235, 0)
-        rail.rotation.y = angle
-        rail.position += Vector3(float(side), 0, 0).rotated(Vector3.UP, angle)
-        root.add_child(rail)
-
-    var slat_count := maxi(2, int(floor(length / 0.44)))
-    for i in range(1, slat_count):
-        var t := float(i) / float(slat_count)
-        var p := from_pos.lerp(to_pos, t)
-        var slat := _box(Vector3(0.56, 0.025, 0.045), BELT_SLAT, 0.62)
-        slat.position = p + Vector3(0, 0.205, 0)
-        slat.rotation.y = angle
-        root.add_child(slat)
-
-    return root
-
-
 static func create_kind_visual(kind: String, scale_value: float = 0.38) -> Node3D:
     var root := Node3D.new()
     root.name = "CargoBall_%s" % kind
