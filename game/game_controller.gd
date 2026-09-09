@@ -4,6 +4,9 @@ extends Node3D
 enum GameState { BOOT, LEVEL_LOADING, READY, PLAYING, PAUSED, FAILED, COMPLETED }
 
 const LEVEL_COUNT := 10
+# Ceiling on simultaneous cargo nodes. Levels spawn far fewer; this only bounds
+# the pool so a pathological level cannot allocate without limit.
+const MAX_POOLED_ITEMS := 24
 # Tap tolerance around a junction, in board units rather than pixels. Under the
 # perspective camera a fixed pixel radius would make distant junctions feel
 # oversized to tap and near ones undersized, so it is converted per junction.
@@ -43,6 +46,7 @@ var buffered: Array[Dictionary] = []
 
 var _world: Node3D
 var _camera: Camera3D
+var _item_pool: ItemPool
 var _hud: FlowHud
 var _buffer_chute: Node3D
 var _spawn_index: int = 0
@@ -184,6 +188,8 @@ func _clear_runtime() -> void:
     positions.clear()
     _spawn_index = 0
     _buffer_chute = null
+    # Every world child was just freed, so the pool's nodes are gone with them.
+    _item_pool = null
 
 func _build_level() -> void:
     # Node positions are parsed first: the floor decoration needs them so props
@@ -198,6 +204,7 @@ func _build_level() -> void:
         if String(node.get("type", "normal")) in ["receiver", "source"]:
             occupied.append(Vector2(float(p[0]), float(p[1])))
 
+    _item_pool = ItemPool.new(_world, MAX_POOLED_ITEMS)
     VisualFactory.create_floor(_world, occupied)
     _buffer_chute = VisualFactory.create_buffer_chute(_world)
 
@@ -288,8 +295,11 @@ func _spawn_item(kind: String, source_id: String, returning: bool) -> void:
         _fail("A route ended unexpectedly.")
         return
 
-    var item := ItemActor.new()
-    _world.add_child(item)
+    var item := _item_pool.acquire()
+    if item == null:
+        return
+    if not item.finished.is_connected(_on_item_finished):
+        item.finished.connect(_on_item_finished)
     item.configure(kind, source_id, source_id, next_id, positions[source_id], positions[next_id], float(level["item_speed"]))
     active_items.append(item)
 
@@ -574,3 +584,8 @@ func _notification(what: int) -> void:
 static func screen_radius(camera: Camera3D, anchor: Vector3, units: float) -> float:
     var edge := anchor + camera.global_transform.basis.x * units
     return camera.unproject_position(anchor).distance_to(camera.unproject_position(edge))
+
+
+func _on_item_finished(item: ItemActor) -> void:
+    if _item_pool != null:
+        _item_pool.release(item)
