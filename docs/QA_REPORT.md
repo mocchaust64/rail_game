@@ -74,13 +74,13 @@ Implemented on this branch:
 - curved-junction pointer tangents
 - physical source feeder lane with next-cargo slot
 - glossy ball cargo with a small shape glyph retained as a non-colour cue
-- aligned three-machine receiver rows on levels 3–8 and 10
+- level JSON coordinates remain identical to `main`; composition is improved by camera framing and curved presentation paths instead of moving gameplay nodes
 - low-chrome HUD with loose upcoming balls and circular waiting-buffer sockets
 - `tests/track_geometry_check.tscn` added to the standard Godot check
 
 Source-level review guarantees intentionally preserved:
 
-- level topology, receiver kinds and spawn order are unchanged
+- level topology, node positions, receiver kinds and spawn order are unchanged
 - committed routing still happens by graph node, not by physical collision
 - pending junction toggle remains one deep
 - buffer rules, return ordering, win/fail conditions and game-state transitions are unchanged
@@ -90,7 +90,7 @@ Not yet verified for this branch:
 
 - Godot 4.7.2 parse/import of the newly added `TrackGeometry` / `TrackVisuals` scripts
 - actual MultiMesh transforms/materials in the Mobile renderer
-- all ten levels visually after auto-framing and receiver-row alignment
+- all ten levels visually after auto-framing
 - touch target feel with the smaller junction art
 - frame time on an Android device after the curved-track MultiMesh pass
 - safe-area composition with the new minimal HUD on a physical notched phone
