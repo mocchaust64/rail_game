@@ -12,7 +12,7 @@ func _ready() -> void:
     ])
     var path := TrackVisuals.create_path(self, points)
 
-    for layer_name in ["Base", "Belt", "Rails"]:
+    for layer_name in ["Roadbed", "InnerBed", "Rails"]:
         var layer := path.get_node_or_null(NodePath(layer_name))
         if not layer is MeshInstance3D:
             failures.append("%s must be one continuous mesh" % layer_name)
@@ -30,16 +30,12 @@ func _ready() -> void:
                 failures.append("%s contains a non-finite vertex" % layer_name)
                 break
 
-    var slats := path.get_node_or_null(NodePath("Slats"))
-    if not slats is MultiMeshInstance3D:
-        failures.append("slats must remain MultiMesh-batched")
-    var authored_detail := path.get_node_or_null(NodePath("KenneyConveyorDetail")) as MultiMeshInstance3D
-    if authored_detail == null:
-        failures.append("Kenney conveyor detail is missing")
-    elif authored_detail.material_override is StandardMaterial3D:
-        var detail_material := authored_detail.material_override as StandardMaterial3D
-        if detail_material.albedo_color.get_luminance() >= 0.40:
-            failures.append("authored conveyor detail must stay darker than the metal rails")
+    var sleepers := path.get_node_or_null(NodePath("Sleepers"))
+    if not sleepers is MultiMeshInstance3D:
+        failures.append("sleepers must stay MultiMesh-batched")
+    var fasteners := path.get_node_or_null(NodePath("RailFasteners"))
+    if not fasteners is MultiMeshInstance3D:
+        failures.append("rail fasteners must stay MultiMesh-batched")
 
     var junction_nodes := {
         "S": {"id": "S", "type": "source", "next": "J"},
@@ -64,19 +60,24 @@ func _ready() -> void:
     var switch_arc := absf(wrapf(angle_a - angle_b, -PI, PI))
     if switch_arc < deg_to_rad(14.0):
         failures.append("switch rail states differ by only %.1f degrees" % rad_to_deg(switch_arc))
-    var switch_base := junction.get_node_or_null(NodePath("SwitchBase")) as MeshInstance3D
-    if switch_base == null or not switch_base.mesh is CylinderMesh:
-        failures.append("junction needs a named mechanical switch base")
-    elif (switch_base.mesh as CylinderMesh).top_radius < TrackVisuals.BASE_WIDTH * 0.5:
-        failures.append("switch base does not cover the conveyor-width junction gap")
+
+    var physical_rail := junction.get_node_or_null(NodePath("PhysicalSwitchRail")) as Node3D
+    if physical_rail == null:
+        failures.append("junction must expose the physical moving rail")
+    var switch_pivot := junction.get_node_or_null(NodePath("SwitchPivot")) as MeshInstance3D
+    if switch_pivot == null or not switch_pivot.mesh is CylinderMesh:
+        failures.append("junction needs a small hidden mechanical pivot")
+    elif (switch_pivot.mesh as CylinderMesh).top_radius > 0.38:
+        failures.append("junction pivot is too large and reads like a UI button")
+
     remove_child(junction)
     junction.free()
-
     remove_child(path)
     path.free()
     VisualFactory._material_cache.clear()
+
     if failures.is_empty():
-        print("track visuals: PASS (continuous body and rails, batched slats)")
+        print("track visuals: PASS (continuous custom rails + physical switch)")
         get_tree().quit(0)
         return
     for failure in failures:
