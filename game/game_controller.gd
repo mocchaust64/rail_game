@@ -7,6 +7,14 @@ const LEVEL_COUNT := 10
 # Ceiling on simultaneous cargo nodes. Levels spawn far fewer; this only bounds
 # the pool so a pathological level cannot allocate without limit.
 const MAX_POOLED_ITEMS := 24
+
+# Feedback weights. Trauma is on a 0..1 scale; a correct delivery should barely
+# register while a failure should be unmistakable.
+const TRAUMA_CORRECT := 0.12
+const TRAUMA_WRONG := 0.40
+const TRAUMA_FAIL := 0.85
+const HITSTOP_WRONG := 0.07
+const HITSTOP_FAIL := 0.16
 # Tap tolerance around a junction, in board units rather than pixels. Under the
 # perspective camera a fixed pixel radius would make distant junctions feel
 # oversized to tap and near ones undersized, so it is converted per junction.
@@ -47,6 +55,8 @@ var buffered: Array[Dictionary] = []
 var _world: Node3D
 var _camera: Camera3D
 var _item_pool: ItemPool
+var _shake := ScreenShake.new()
+var _hitstop_remaining := 0.0
 var _hud: FlowHud
 var _buffer_chute: Node3D
 var _spawn_index: int = 0
@@ -172,6 +182,10 @@ func _handle_level_error(message: String) -> void:
     _hud.show_fail("This level could not be loaded. Check the Godot output log.")
 
 func _clear_runtime() -> void:
+    # Leaving a hitstop running across a level change would strand the game in
+    # slow motion with nothing left to end it.
+    Engine.time_scale = 1.0
+    _hitstop_remaining = 0.0
     if _tutorial_junction != null and is_instance_valid(_tutorial_junction):
         _tutorial_junction.set_hint_active(false)
     _tutorial_junction = null
@@ -256,6 +270,27 @@ func _setup_tutorial_hint() -> void:
     _tutorial_junction = junctions[first_id] as JunctionActor
     _tutorial_junction.set_hint_active(true)
     _hud.set_tutorial_visible(true)
+
+func _process(delta: float) -> void:
+    _shake.advance(delta)
+    _camera.position = CAMERA_POSITION + _shake.offset()
+    _camera.rotation.z = _shake.roll()
+
+    if _hitstop_remaining > 0.0:
+        # Counted in real time so the freeze is not slowed by itself.
+        _hitstop_remaining -= delta / maxf(0.05, Engine.time_scale)
+        if _hitstop_remaining <= 0.0:
+            Engine.time_scale = 1.0
+
+
+# A very short slow-down on impact. Reduced motion skips it: it is motion the
+# player did not ask for and it interrupts input.
+func _hitstop(seconds: float) -> void:
+    if SaveService.reduced_motion:
+        return
+    Engine.time_scale = 0.12
+    _hitstop_remaining = seconds
+
 
 func _physics_process(delta: float) -> void:
     if state != GameState.PLAYING:
@@ -364,6 +399,8 @@ func _deliver_item(item: ItemActor, receiver_id: String) -> void:
         receiver.accept()
     AudioService.play("correct", 1.0 + min(0.16, float(_junction_taps % 5) * 0.018), -3.0)
     HapticService.light()
+    _shake.add_trauma(TRAUMA_CORRECT)
+    VisualFactory.burst(_world, positions[receiver_id] + Vector3(0, 1.0, 0), VisualFactory.kind_color(item.kind), 26, 3.2)
     item.animate_delivered()
 
 func _buffer_item(item: ItemActor, receiver_id: String) -> void:
@@ -387,7 +424,11 @@ func _buffer_item(item: ItemActor, receiver_id: String) -> void:
     })
     item.animate_buffered(_buffer_target_position())
     AudioService.play("wrong", 1.0, -2.0)
+    AudioService.duck_music()
     HapticService.medium()
+    _shake.add_trauma(TRAUMA_WRONG)
+    _hitstop(HITSTOP_WRONG)
+    VisualFactory.burst(_world, positions[receiver_id] + Vector3(0, 1.0, 0), Color("#8C9BA6"), 18, 2.2)
     AnalyticsService.track("item_wrong", {"level": current_level_number, "buffer": buffered.size()})
     _refresh_buffer_ui()
     _hud.flash_buffer()
@@ -474,7 +515,10 @@ func _fail(reason: String) -> void:
         return
     state = GameState.FAILED
     AudioService.play("fail", 1.0, -1.0)
+    AudioService.duck_music(12.0, 0.7)
     HapticService.heavy()
+    _shake.add_trauma(TRAUMA_FAIL)
+    _hitstop(HITSTOP_FAIL)
     AnalyticsService.track("level_fail", {
         "level": current_level_number,
         "duration": snapped(_elapsed, 0.01),

@@ -15,3 +15,7 @@ fi
 "$ROOT/scripts/run_scene_check.sh" res://tests/analytics_check.tscn
 "$ROOT/scripts/run_scene_check.sh" res://tests/audio_check.tscn
 "$ROOT/scripts/run_scene_check.sh" res://tests/item_pool_check.tscn
+"$ROOT/scripts/run_scene_check.sh" res://tests/localisation_check.tscn
+"$ROOT/scripts/run_scene_check.sh" res://tests/accessibility_check.tscn
+"$ROOT/scripts/run_scene_check.sh" res://tests/screen_shake_check.tscn
+"$ROOT/scripts/run_scene_check.sh" res://tests/particles_check.tscn

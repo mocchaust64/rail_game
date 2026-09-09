@@ -461,3 +461,40 @@ static func _cylinder(radius: float, height: float, color: Color, roughness: flo
     node.mesh = mesh
     node.material_override = material(color, roughness, emission, metallic)
     return node
+
+
+# One-shot particle burst. CPUParticles3D rather than GPUParticles3D: the bursts
+# are small, this behaves identically on every mobile GPU, and it needs no
+# process material to be authored.
+static func burst(parent: Node3D, world_position: Vector3, colour: Color, amount: int = 18, upward: float = 2.6) -> void:
+    if parent == null or not is_instance_valid(parent):
+        return
+    var particles := CPUParticles3D.new()
+    particles.name = "Burst"
+    particles.emitting = false
+    particles.one_shot = true
+    particles.amount = amount
+    particles.lifetime = 0.7
+    particles.explosiveness = 1.0
+    particles.position = world_position
+    particles.direction = Vector3.UP
+    particles.spread = 62.0
+    particles.initial_velocity_min = upward * 0.6
+    particles.initial_velocity_max = upward
+    particles.gravity = Vector3(0, -7.0, 0)
+    particles.scale_amount_min = 0.13
+    particles.scale_amount_max = 0.26
+    particles.color = colour
+
+    var mesh := SphereMesh.new()
+    mesh.radius = 0.5
+    mesh.height = 1.0
+    mesh.radial_segments = 6
+    mesh.rings = 3
+    particles.mesh = mesh
+    particles.material_override = material(colour, 0.35, 0.55)
+
+    parent.add_child(particles)
+    particles.emitting = true
+    # Freed by its own lifetime rather than by the caller remembering to.
+    parent.get_tree().create_timer(particles.lifetime + 0.2).timeout.connect(particles.queue_free)
