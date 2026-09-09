@@ -1,6 +1,6 @@
 class_name LevelBuilder
 extends RefCounted
-# Builds the gameplay graph and its presentation. Level 3 now doubles as the
+# Builds the gameplay graph and its presentation. Level 3 doubles as the
 # reference-composition scene, so normal graph nodes may opt into visual-only
 # processor shells without changing routing rules.
 
@@ -82,7 +82,7 @@ static func build(level: Dictionary, world: Node3D, pool_size: int) -> Dictionar
                 junctions[id] = junction
             "normal":
                 if String(node.get("visual", "")) == "processor":
-                    var processor := MachineVisuals.create_processor_shell(world)
+                    var processor := ProcessorVisual.create(world)
                     processor.position = positions[id]
                     var next_id := String(node.get("next", ""))
                     if not next_id.is_empty() and positions.has(next_id):
