@@ -1,9 +1,8 @@
 class_name MachineVisuals
 extends RefCounted
-# Receiver/source shells share one authored Kenney Factory Kit body so the
-# machines read as a coherent product asset instead of boxes assembled in code.
-
-const KENNEY_HOPPER: Mesh = preload("res://assets/vendor/kenney_factory_kit/hopper_square_body_cc0.obj")
+# Custom reference-video machines. The body is a generated chamfered toy mesh,
+# shared by source and destinations so the gameplay scene has one visual language
+# without depending on external model packs.
 
 
 static func create_source_shell(parent: Node3D) -> Node3D:
@@ -11,33 +10,32 @@ static func create_source_shell(parent: Node3D) -> Node3D:
     root.name = "SourceShell"
     parent.add_child(root)
 
-    var base := _box(Vector3(1.48, 0.14, 1.42), Color("#555A5D"), 0.58)
-    base.position.y = 0.06
-    root.add_child(base)
+    var shadow_base := _chamfered_box(Vector3(1.52, 0.16, 1.42), 0.16, Color("#55585A"), 0.60)
+    shadow_base.position.y = 0.08
+    root.add_child(shadow_base)
 
-    var body := _authored_body(VisualFactory.BLUE)
-    body.position = Vector3(0, 0.10, -0.05)
+    var body := _chamfered_box(Vector3(1.40, 1.06, 1.30), 0.18, VisualFactory.BLUE, 0.34)
+    body.position.y = 0.62
     root.add_child(body)
 
-    var mouth := _box(Vector3(0.76, 0.34, 0.16), VisualFactory.MACHINE_DARK, 0.46)
-    mouth.position = Vector3(0, 0.46, 0.64)
+    var face := _chamfered_box(Vector3(0.92, 0.54, 0.10), 0.10, Color("#286FB7"), 0.38)
+    face.position = Vector3(0, 0.54, 0.66)
+    root.add_child(face)
+
+    var mouth := _chamfered_box(Vector3(0.74, 0.36, 0.12), 0.07, Color("#2F3235"), 0.48)
+    mouth.position = Vector3(0, 0.42, 0.73)
     root.add_child(mouth)
 
-    var ring := _cylinder(0.39, 0.09, Color("#DADBD5"), 0.28, 0.16)
+    var ring := _cylinder(0.36, 0.075, Color("#DDE1E0"), 0.25, 0.20)
     ring.name = "LaunchRing"
-    ring.position = Vector3(0, 1.18, -0.02)
+    ring.position = Vector3(0, 1.21, -0.02)
     root.add_child(ring)
 
-    var well := _cylinder(0.27, 0.06, VisualFactory.MACHINE_DARK, 0.45)
-    well.position = Vector3(0, 1.22, -0.02)
-    root.add_child(well)
+    var top_button := _cylinder(0.25, 0.07, VisualFactory.BLUE, 0.20)
+    top_button.position = Vector3(0, 1.265, -0.02)
+    root.add_child(top_button)
 
-    var lever := _cylinder(0.045, 0.42, Color("#727A7D"), 0.34, 0.14)
-    lever.position = Vector3(0.62, 0.72, 0.03)
-    root.add_child(lever)
-    var knob := _sphere(0.10, VisualFactory.BLUE, 0.22)
-    knob.position = Vector3(0.62, 0.96, 0.03)
-    root.add_child(knob)
+    _add_lever(root, VisualFactory.BLUE)
     return root
 
 
@@ -47,51 +45,59 @@ static func create_receiver_shell(parent: Node3D, kind: String) -> Dictionary:
     parent.add_child(root)
 
     var colour := VisualFactory.kind_color(kind)
-    var base := _box(Vector3(1.58, 0.15, 1.48), Color("#555A5D"), 0.58)
-    base.position.y = 0.06
-    root.add_child(base)
+    var dark_colour := colour.darkened(0.16)
 
-    var body := _authored_body(colour)
-    body.position = Vector3(0, 0.10, -0.05)
+    var shadow_base := _chamfered_box(Vector3(1.62, 0.16, 1.48), 0.16, Color("#55585A"), 0.60)
+    shadow_base.position.y = 0.08
+    root.add_child(shadow_base)
+
+    var body := _chamfered_box(Vector3(1.48, 1.14, 1.34), 0.18, colour, 0.33)
+    body.position.y = 0.66
     root.add_child(body)
 
-    # Deep front mouth makes the destination obvious before the label is read.
-    var mouth := _box(Vector3(0.82, 0.42, 0.18), Color("#303437"), 0.44)
-    mouth.position = Vector3(0, 0.48, 0.65)
+    var face := _chamfered_box(Vector3(1.02, 0.68, 0.11), 0.10, dark_colour, 0.38)
+    face.position = Vector3(0, 0.58, 0.69)
+    root.add_child(face)
+
+    var mouth := _chamfered_box(Vector3(0.84, 0.42, 0.13), 0.07, Color("#303236"), 0.46)
+    mouth.position = Vector3(0, 0.40, 0.765)
     root.add_child(mouth)
 
-    var tongue := _box(Vector3(0.76, 0.07, 0.78), colour, 0.48)
-    tongue.position = Vector3(0, 0.10, 1.00)
+    # Coloured ramp with the same double chevron used by the target video.
+    var tongue := _chamfered_box(Vector3(0.78, 0.085, 0.92), 0.10, colour, 0.42)
+    tongue.position = Vector3(0, 0.095, 1.08)
     root.add_child(tongue)
-    _chevron(root, 0.91)
-    _chevron(root, 1.12)
+    _chevron(root, 0.96)
+    _chevron(root, 1.18)
 
-    # A fixed face sign reads like part of the machine rather than floating UI.
-    var sign := _box(Vector3(0.82, 0.23, 0.045), Color("#414548"), 0.50)
-    sign.position = Vector3(0, 0.91, 0.61)
+    var sign := _chamfered_box(Vector3(0.82, 0.24, 0.055), 0.06, dark_colour, 0.42)
+    sign.position = Vector3(0, 0.91, 0.755)
     root.add_child(sign)
 
     var label := Label3D.new()
     label.text = kind.to_upper()
-    label.font_size = 86
-    label.pixel_size = 0.0036
+    label.font_size = 88
+    label.pixel_size = 0.00355
     label.modulate = Color.WHITE
-    label.outline_size = 5
-    label.outline_modulate = Color(0, 0, 0, 0.15)
-    label.position = Vector3(0, 0.91, 0.64)
+    label.outline_size = 4
+    label.outline_modulate = Color(0, 0, 0, 0.12)
+    label.position = Vector3(0, 0.91, 0.79)
     root.add_child(label)
 
     var badge_anchor := Node3D.new()
-    badge_anchor.position = Vector3(0, 1.30, 0)
+    badge_anchor.name = "TopBadge"
+    badge_anchor.position = Vector3(0, 1.31, -0.03)
     root.add_child(badge_anchor)
-    var cap := _cylinder(0.18, 0.055, Color("#E5E2DA"), 0.28, 0.10)
-    badge_anchor.add_child(cap)
-    var cap_dot := _sphere(0.105, colour, 0.22)
-    cap_dot.position.y = 0.055
-    badge_anchor.add_child(cap_dot)
 
-    var lamp := _sphere(0.10, colour, 0.22, 0.20)
-    lamp.position = Vector3(0.62, 1.02, 0.06)
+    var top_ring := _cylinder(0.24, 0.055, Color("#E4E2DC"), 0.24, 0.16)
+    badge_anchor.add_child(top_ring)
+    var top_button := _cylinder(0.16, 0.075, colour, 0.20)
+    top_button.position.y = 0.055
+    badge_anchor.add_child(top_button)
+
+    _add_lever(root, colour)
+    var lamp := _sphere(0.095, colour, 0.18, 0.16)
+    lamp.position = Vector3(0.70, 1.02, 0.10)
     root.add_child(lamp)
 
     return {
@@ -102,22 +108,72 @@ static func create_receiver_shell(parent: Node3D, kind: String) -> Dictionary:
     }
 
 
-static func _authored_body(colour: Color) -> MeshInstance3D:
+static func _add_lever(parent: Node3D, colour: Color) -> void:
+    var stem := _cylinder(0.045, 0.42, Color("#73777A"), 0.32, 0.18)
+    stem.position = Vector3(0.70, 0.76, 0.04)
+    parent.add_child(stem)
+    var knob := _sphere(0.095, colour, 0.20)
+    knob.position = Vector3(0.70, 1.00, 0.04)
+    parent.add_child(knob)
+
+
+static func _chamfered_box(size: Vector3, bevel: float, colour: Color, roughness: float) -> MeshInstance3D:
     var node := MeshInstance3D.new()
-    node.name = "KenneyFactoryBody"
-    node.mesh = KENNEY_HOPPER
-    node.scale = Vector3(1.20, 0.72, 1.20)
-    node.material_override = VisualFactory.material(colour, 0.38, 0.0, 0.06)
+    var tool := SurfaceTool.new()
+    tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+    tool.set_material(VisualFactory.material(colour, roughness))
+
+    var hx := size.x * 0.5
+    var hy := size.y * 0.5
+    var hz := size.z * 0.5
+    var b := clampf(bevel, 0.01, minf(hx, hz) * 0.48)
+
+    var bottom: Array[Vector3] = [
+        Vector3(-hx + b, -hy, -hz),
+        Vector3(hx - b, -hy, -hz),
+        Vector3(hx, -hy, -hz + b),
+        Vector3(hx, -hy, hz - b),
+        Vector3(hx - b, -hy, hz),
+        Vector3(-hx + b, -hy, hz),
+        Vector3(-hx, -hy, hz - b),
+        Vector3(-hx, -hy, -hz + b),
+    ]
+    var top: Array[Vector3] = []
+    for p in bottom:
+        top.append(Vector3(p.x, hy, p.z))
+
+    for i in range(8):
+        var next := (i + 1) % 8
+        _quad(tool, bottom[i], bottom[next], top[next], top[i])
+
+    var top_center := Vector3(0, hy, 0)
+    var bottom_center := Vector3(0, -hy, 0)
+    for i in range(8):
+        var next := (i + 1) % 8
+        tool.add_vertex(top_center)
+        tool.add_vertex(top[next])
+        tool.add_vertex(top[i])
+        tool.add_vertex(bottom_center)
+        tool.add_vertex(bottom[i])
+        tool.add_vertex(bottom[next])
+
+    tool.generate_normals()
+    node.mesh = tool.commit()
     return node
 
 
+static func _quad(tool: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3) -> void:
+    for vertex in [a, b, c, a, c, d]:
+        tool.add_vertex(vertex)
+
+
 static func _chevron(parent: Node3D, z_value: float) -> void:
-    var left := _box(Vector3(0.10, 0.032, 0.30), Color.WHITE, 0.46)
-    left.position = Vector3(-0.10, 0.145, z_value)
+    var left := _box(Vector3(0.10, 0.035, 0.30), Color.WHITE, 0.44)
+    left.position = Vector3(-0.10, 0.16, z_value)
     left.rotation.y = -PI * 0.25
     parent.add_child(left)
-    var right := _box(Vector3(0.10, 0.032, 0.30), Color.WHITE, 0.46)
-    right.position = Vector3(0.10, 0.145, z_value)
+    var right := _box(Vector3(0.10, 0.035, 0.30), Color.WHITE, 0.44)
+    right.position = Vector3(0.10, 0.16, z_value)
     right.rotation.y = PI * 0.25
     parent.add_child(right)
 
@@ -136,8 +192,8 @@ static func _sphere(radius: float, colour: Color, roughness: float, emission: fl
     var mesh := SphereMesh.new()
     mesh.radius = radius
     mesh.height = radius * 2.0
-    mesh.radial_segments = 18
-    mesh.rings = 9
+    mesh.radial_segments = 20
+    mesh.rings = 10
     node.mesh = mesh
     node.material_override = VisualFactory.material(colour, roughness, emission)
     return node
