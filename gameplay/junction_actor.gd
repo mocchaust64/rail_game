@@ -1,9 +1,6 @@
 class_name JunctionActor
 extends Node3D
 
-# The reference rotates a noticeable conveyor section, not a tiny arrow at the
-# centre of a Y. This length leaves enough moving hardware to make the route
-# change readable before a ball reaches it.
 const SWITCH_REACH := 1.50
 
 var junction_id: String = ""
@@ -45,8 +42,6 @@ func _process(delta: float) -> void:
 
 
 func current_output() -> String:
-    # The route changes only after the long conveyor has physically reached the
-    # new guide rails. Visual connection and gameplay connection are identical.
     return out_a if state == 0 else out_b
 
 
@@ -54,10 +49,14 @@ func selected_state() -> int:
     return _target_state if _is_animating else state
 
 
+func is_switching() -> bool:
+    return _is_animating
+
+
 func request_toggle() -> void:
-    # Ignore a second event while the rail is moving. Desktop Godot can emit a
-    # touch-emulation event and a mouse event for one click; queueing the second
-    # event was the reason the rail visibly changed and then rotated back.
+    # One physical click must equal one route change. On desktop a single click
+    # can arrive as both touch-emulation and mouse input, so never queue a second
+    # toggle while the conveyor is already moving.
     if _is_animating:
         return
     _perform_toggle(1 - state)
@@ -78,7 +77,7 @@ func _perform_toggle(next_state: int) -> void:
         _route_halo.scale = Vector3(0.82, 1.0, 0.82)
         var halo_tween := Motion.tween(_route_halo)
         halo_tween.tween_property(_route_halo, "scale", Vector3.ONE * 1.06, 0.09)
-        halo_tween.tween_property(_route_halo, "scale", Vector3.ONE, 0.10)
+        halo_tween.tween_property(_route_halo, "scale", Vector3.ONE, 0.09)
 
     var target_angle := _angle_for_state(_target_state)
     var tween := Motion.tween(self)
@@ -88,15 +87,16 @@ func _perform_toggle(next_state: int) -> void:
 
 
 func _on_toggle_finished() -> void:
+    # Gameplay commits only once the long conveyor visibly reaches its new rails.
     state = _target_state
     _is_animating = false
     if _route_halo != null:
-        var halo_tween := Motion.tween(_route_halo)
-        halo_tween.tween_property(_route_halo, "modulate:a", 0.0, 0.10)
-        halo_tween.finished.connect(func() -> void:
+        var hide_tween := Motion.tween(_route_halo)
+        hide_tween.tween_property(_route_halo, "scale", Vector3.ONE * 0.86, 0.09)
+        hide_tween.finished.connect(func() -> void:
             if _route_halo != null:
                 _route_halo.visible = false
-                _route_halo.modulate.a = 1.0
+                _route_halo.scale = Vector3.ONE
         )
 
 
@@ -119,7 +119,8 @@ func _angle_for_state(route_state: int) -> float:
     if dir.length_squared() < 0.0001:
         return 0.0
     dir.y = 0.0
-    return atan2(dir.normalized().x, dir.normalized().z)
+    dir = dir.normalized()
+    return atan2(dir.x, dir.z)
 
 
 func _snap_switch() -> void:
@@ -152,8 +153,6 @@ func _build_visual() -> void:
     ])
     TrackVisuals.create_path(_switch_arm, local_points, 0.0, 0.0, true, true)
 
-    # The target video briefly shows a blue selection glow around a rotating
-    # section. It appears only during the change, never as a permanent button.
     _route_halo = MeshInstance3D.new()
     _route_halo.name = "RouteChangeHalo"
     var halo_mesh := TorusMesh.new()
