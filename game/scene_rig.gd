@@ -1,31 +1,27 @@
 class_name SceneRig
 extends Node3D
 # Camera, lights and environment, plus the shake that rides on the camera.
-#
-# Split out of GameController because none of it depends on the rules of the
-# game: it is the look of the board, and it is the part most often retuned.
-# Every value that needs tuning against a real render is a constant here.
+# Visual pass is tuned against the user's reference video: warm background,
+# close toy-diorama camera and stronger contact shadows.
 
-# The board is roughly 9.2 by 14.1 units. Engine defaults assume a much larger
-# world, so these are tuned to that scale rather than left at their defaults.
-const KEY_LIGHT_EULER := Vector3(-48, 32, 0)
-const KEY_LIGHT_ENERGY := 1.45
-const KEY_LIGHT_COLOR := Color("#FFF6E8")
-const KEY_LIGHT_SOFTNESS := 1.4
-const SHADOW_BIAS := 0.024
-const SHADOW_NORMAL_BIAS := 0.85
-const SHADOW_MAX_DISTANCE := 60.0
-const AMBIENT_ENERGY := 0.55
+const KEY_LIGHT_EULER := Vector3(-51, 28, -8)
+const KEY_LIGHT_ENERGY := 1.55
+const KEY_LIGHT_COLOR := Color("#FFF4DE")
+const KEY_LIGHT_SOFTNESS := 2.2
+const SHADOW_BIAS := 0.022
+const SHADOW_NORMAL_BIAS := 0.72
+const SHADOW_MAX_DISTANCE := 42.0
+const AMBIENT_ENERGY := 0.62
 
-# Mild perspective. Note this is not only a depth cue: directional shadows do
-# not render at all under an orthographic camera in this engine build.
-const CAMERA_FOV := 30.0
-const CAMERA_POSITION := Vector3(0.0, 23.3, 16.9)
-const CAMERA_TARGET := Vector3(0, 0, 0.25)
+# Closer and lower than the previous overview shot. The reference fills the
+# portrait with the machines and belt, rather than showing an entire white board.
+const CAMERA_FOV := 34.0
+const CAMERA_POSITION := Vector3(0.0, 16.2, 12.6)
+const CAMERA_TARGET := Vector3(0, 0.25, 0.15)
 
-const BOUNCE_POSITION := Vector3(-3.4, 3.6, 7.4)
-const BOUNCE_ENERGY := 0.38
-const BOUNCE_COLOR := Color("#FFE2C4")
+const BOUNCE_POSITION := Vector3(-3.8, 4.2, 5.0)
+const BOUNCE_ENERGY := 0.42
+const BOUNCE_COLOR := Color("#FFDDBE")
 
 var camera: Camera3D
 var world: Node3D
@@ -58,11 +54,9 @@ func _ready() -> void:
     key_light.directional_shadow_max_distance = SHADOW_MAX_DISTANCE
     add_child(key_light)
 
-    # Warm bounce from the front-lower quadrant. Without it the shadowed faces of
-    # the white machines read as flat grey once ambient is turned down.
     var bounce := OmniLight3D.new()
     bounce.position = BOUNCE_POSITION
-    bounce.omni_range = 22.0
+    bounce.omni_range = 20.0
     bounce.light_energy = BOUNCE_ENERGY
     bounce.light_color = BOUNCE_COLOR
     bounce.shadow_enabled = false
@@ -71,16 +65,16 @@ func _ready() -> void:
     var holder := WorldEnvironment.new()
     var env := Environment.new()
     env.background_mode = Environment.BG_COLOR
-    env.background_color = Color("#BDD0D9")
+    env.background_color = Color("#F1E4D3")
     env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-    env.ambient_light_color = Color("#EAF3F8")
+    env.ambient_light_color = Color("#FFF0DC")
     env.ambient_light_energy = AMBIENT_ENERGY
     env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-    env.tonemap_white = 1.35
+    env.tonemap_white = 1.22
     env.glow_enabled = true
-    env.glow_intensity = 0.5
-    env.glow_bloom = 0.06
-    env.glow_hdr_threshold = 1.05
+    env.glow_intensity = 0.30
+    env.glow_bloom = 0.035
+    env.glow_hdr_threshold = 1.18
     holder.environment = env
     add_child(holder)
 
@@ -95,7 +89,6 @@ func add_trauma(amount: float) -> void:
     _shake.add_trauma(amount)
 
 
-# Clears everything the level built, leaving the rig itself intact.
 func clear_world() -> void:
     for child in world.get_children():
         world.remove_child(child)
