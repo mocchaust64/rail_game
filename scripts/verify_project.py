@@ -22,9 +22,9 @@ def check_required_files() -> None:
         "project.godot", "app/main.tscn", "game/game_controller.gd",
         "gameplay/item_actor.gd", "gameplay/junction_actor.gd",
         "gameplay/receiver_actor.gd", "gameplay/source_actor.gd",
-        "gameplay/visual_factory.gd", "gameplay/level_validator.gd",
-        "gameplay/track_geometry.gd", "gameplay/track_visuals.gd",
-        "ui/hud.gd", "ui/cargo_icon.gd",
+        "gameplay/visual_factory.gd", "gameplay/machine_visuals.gd",
+        "gameplay/level_validator.gd", "gameplay/track_geometry.gd",
+        "gameplay/track_visuals.gd", "ui/hud.gd", "ui/cargo_icon.gd",
         "services/save_service.gd", "services/audio_service.gd",
         "services/haptic_service.gd", "services/analytics_service.gd",
         "assets/branding/icon.svg", "assets/branding/splash.svg",
@@ -35,10 +35,8 @@ def check_required_files() -> None:
         "assets/vendor/kaykit_space_base_bits/gltf/basemodule_A.gltf",
         "assets/vendor/kaykit_space_base_bits/gltf/spacebits_texture.png",
         "assets/vendor/kaykit_space_base_bits/LICENSE.txt",
-        "localisation/strings.csv",
-        "assets/palette/toy_factory.tres",
-        "default_bus_layout.tres",
-        "game/scene_rig.gd", "game/level_builder.gd",
+        "localisation/strings.csv", "assets/palette/toy_factory.tres",
+        "default_bus_layout.tres", "game/scene_rig.gd", "game/level_builder.gd",
         "gameplay/item_pool.gd", "gameplay/motion.gd", "gameplay/screen_shake.gd",
         "assets/branding/icon.png", "assets/branding/splash.png",
         "assets/vendor/kaykit_prototype_bits/Pallet_Large_CC0_Derived.obj",
@@ -46,6 +44,10 @@ def check_required_files() -> None:
         "assets/vendor/kaykit_prototype_bits/Pallet_Loaded_CC0_Derived.obj",
         "assets/vendor/kaykit_prototype_bits/LICENSE.txt",
         "assets/vendor/kaykit_prototype_bits/SOURCE.md",
+        "assets/vendor/kenney_factory_kit/conveyor_middle_cc0.obj",
+        "assets/vendor/kenney_factory_kit/hopper_square_body_cc0.obj",
+        "assets/vendor/kenney_factory_kit/LICENSE.txt",
+        "assets/vendor/kenney_factory_kit/SOURCE.md",
         "tests/track_geometry_check.gd", "tests/track_geometry_check.tscn",
     ]
     for rel in required:
@@ -143,6 +145,17 @@ def check_levels() -> None:
                 fail(f"{path.name}: {kind} from {source} cannot reach matching receiver")
 
 
+def _obj_counts(path: pathlib.Path) -> tuple[int, int]:
+    vertices = 0
+    faces = 0
+    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        if line.startswith("v "):
+            vertices += 1
+        elif line.startswith("f "):
+            faces += 1
+    return vertices, faces
+
+
 def check_vendor_assets() -> None:
     vendor = ROOT / "assets" / "vendor" / "kaykit_prototype_bits"
     minimums = {
@@ -155,13 +168,7 @@ def check_vendor_assets() -> None:
         if not path.exists():
             fail(f"vendor asset missing: {path.relative_to(ROOT)}")
             continue
-        vertices = 0
-        faces = 0
-        for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
-            if line.startswith("v "):
-                vertices += 1
-            elif line.startswith("f "):
-                faces += 1
+        vertices, faces = _obj_counts(path)
         if vertices < min_vertices or faces < min_faces:
             fail(f"vendor asset too simple/corrupt: {name} ({vertices}v/{faces}f)")
     license_text = (vendor / "LICENSE.txt").read_text(encoding="utf-8", errors="replace") if (vendor / "LICENSE.txt").exists() else ""
@@ -170,6 +177,26 @@ def check_vendor_assets() -> None:
         fail("vendor license manifest missing CC0/KayKit provenance")
     if "github.com/KayKit-Game-Assets/KayKit-Prototype-Bits-1.0" not in source_text:
         fail("vendor source manifest missing upstream repository")
+
+    kenney = ROOT / "assets" / "vendor" / "kenney_factory_kit"
+    kenney_minimums = {
+        "conveyor_middle_cc0.obj": (24, 40),
+        "hopper_square_body_cc0.obj": (32, 60),
+    }
+    for name, (min_vertices, min_faces) in kenney_minimums.items():
+        path = kenney / name
+        if not path.exists():
+            fail(f"Kenney gameplay asset missing: {path.relative_to(ROOT)}")
+            continue
+        vertices, faces = _obj_counts(path)
+        if vertices < min_vertices or faces < min_faces:
+            fail(f"Kenney gameplay asset too simple/corrupt: {name} ({vertices}v/{faces}f)")
+    kenney_license = (kenney / "LICENSE.txt").read_text(encoding="utf-8", errors="replace") if (kenney / "LICENSE.txt").exists() else ""
+    kenney_source = (kenney / "SOURCE.md").read_text(encoding="utf-8", errors="replace") if (kenney / "SOURCE.md").exists() else ""
+    if "CC0" not in kenney_license or "Kenney" not in kenney_license:
+        fail("Kenney license manifest missing CC0/Kenney provenance")
+    if "229731c099b4a2193398e80cb4f4adf68cf0aa62" not in kenney_source:
+        fail("Kenney source manifest missing pinned mirror commit")
 
 
 def check_audio() -> None:
@@ -199,6 +226,7 @@ def main() -> int:
     print(" - bundled audio present")
     print(" - CC0 vendor geometry + provenance present")
     print(" - curved track renderer/geometry contract files present")
+    print(" - Kenney gameplay rail/machine geometry present and sane")
     return 0
 
 if __name__ == "__main__":
