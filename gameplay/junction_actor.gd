@@ -13,6 +13,7 @@ var _hint_ring: MeshInstance3D
 var _pivot: MeshInstance3D
 var _is_animating: bool = false
 var _queued_toggle: bool = false
+var _target_state: int = 0
 var _positions: Dictionary = {}
 var _hint_active: bool = false
 var _clock: float = 0.0
@@ -23,6 +24,7 @@ func configure(data: Dictionary, positions: Dictionary) -> void:
     out_a = String(data["out_a"])
     out_b = String(data["out_b"])
     state = int(data.get("initial_state", 0)) & 1
+    _target_state = state
     _positions = positions
     _build_visual()
     _snap_switch()
@@ -40,29 +42,34 @@ func _process(delta: float) -> void:
 
 
 func current_output() -> String:
+    # Gameplay follows the rail that is physically connected right now. A tap
+    # does not change routing early while the metal arm is still moving.
     return out_a if state == 0 else out_b
+
+
+func selected_state() -> int:
+    return _target_state if _is_animating else state
 
 
 func request_toggle() -> void:
     if _is_animating:
-        _queued_toggle = true
+        # One extra tap reverses the requested end state after the current move.
+        _queued_toggle = not _queued_toggle
         return
-    _perform_toggle()
+    _perform_toggle(1 - state)
 
 
 func set_hint_active(value: bool) -> void:
     _hint_active = value
 
 
-func _perform_toggle() -> void:
-    state = 1 - state
+func _perform_toggle(next_state: int) -> void:
+    _target_state = next_state & 1
     _is_animating = true
     AudioService.play("tap", 1.0, -4.0)
     HapticService.light()
 
-    # There is no arrow or UI button. The piece of rail itself snaps to the
-    # selected branch, which is the route feedback used by the reference game.
-    var target_angle := _target_angle()
+    var target_angle := _angle_for_state(_target_state)
     var tween := Motion.tween(self)
     tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
     tween.tween_property(_switch_arm, "rotation:y", target_angle, 0.14)
@@ -76,14 +83,20 @@ func _perform_toggle() -> void:
 
 
 func _on_toggle_finished() -> void:
+    # Route changes only now, when the rail has visibly reached the new branch.
+    state = _target_state
     _is_animating = false
     if _queued_toggle:
         _queued_toggle = false
-        _perform_toggle()
+        _perform_toggle(1 - state)
 
 
 func _target_angle() -> float:
-    var target_id := current_output()
+    return _angle_for_state(selected_state())
+
+
+func _angle_for_state(route_state: int) -> float:
+    var target_id := out_a if route_state == 0 else out_b
     if not _positions.has(target_id):
         return 0.0
 
@@ -103,12 +116,11 @@ func _target_angle() -> float:
 
 func _snap_switch() -> void:
     if _switch_arm != null:
-        _switch_arm.rotation.y = _target_angle()
+        _switch_arm.rotation.y = _angle_for_state(state)
 
 
 func _build_visual() -> void:
-    # Only a small mechanism is visible under the rails. It should disappear
-    # into the track network, not read as a circular gameplay button.
+    # Small mechanical centre only; the moving rail itself communicates routing.
     _pivot = MeshInstance3D.new()
     _pivot.name = "SwitchPivot"
     var pivot_mesh := CylinderMesh.new()
@@ -133,7 +145,6 @@ func _build_visual() -> void:
     ])
     TrackVisuals.create_path(_switch_arm, local_points)
 
-    # Tutorial-only pulse; normal gameplay has no icon over the switch.
     _hint_ring = MeshInstance3D.new()
     var hint_mesh := TorusMesh.new()
     hint_mesh.inner_radius = 0.38
