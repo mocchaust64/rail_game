@@ -10,6 +10,7 @@ fi
 "$GODOT_BIN" --headless --path "$ROOT" --editor --quit
 "$GODOT_BIN" --headless --path "$ROOT" --quit-after 5
 "$GODOT_BIN" --headless --path "$ROOT" --script res://tests/prop_clearance_check.gd
+"$ROOT/scripts/run_scene_check.sh" res://tests/track_geometry_check.tscn
 "$ROOT/scripts/run_scene_check.sh" res://tests/tap_radius_check.tscn
 "$ROOT/scripts/run_scene_check.sh" res://tests/save_recovery_check.tscn
 "$ROOT/scripts/run_scene_check.sh" res://tests/analytics_check.tscn
