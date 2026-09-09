@@ -1,12 +1,12 @@
 class_name LevelBuilder
 extends RefCounted
-# Builds the gameplay graph and its presentation. Level 3 doubles as the
-# reference-composition scene, so normal graph nodes may opt into visual-only
-# processor shells without changing routing rules.
+# Builds gameplay plus the reference-video presentation. Junction outgoing paths
+# keep their pale guide rails visible, but the dark belt starts after the long
+# rotating conveyor section owned by JunctionActor.
 
 const LEVEL_PATH := "res://levels/level_%02d.json"
 const BLOCKING_TYPES := ["receiver", "source"]
-const JUNCTION_VISUAL_GAP := 0.54
+const JUNCTION_VISUAL_GAP := 1.50
 
 
 static func load_data(level_number: int) -> Dictionary:
@@ -66,7 +66,7 @@ static func build(level: Dictionary, world: Node3D, pool_size: int) -> Dictionar
                 var source := SourceActor.new()
                 source.position = positions[id]
                 world.add_child(source)
-                source.configure(String(id))
+                source.configure(String(id), String(node.get("source_style", "compact")))
                 sources[id] = source
             "receiver":
                 var receiver := ReceiverActor.new()
@@ -120,8 +120,8 @@ static func _draw_tracks(nodes_by_id: Dictionary, positions: Dictionary, world: 
             var start: Vector3 = positions[id]
             var finish: Vector3 = positions[target]
             var points := TrackGeometry.path_for(id, target, start, finish)
-            var start_trim := JUNCTION_VISUAL_GAP if String(node.get("type", "normal")) == "junction" else 0.0
-            TrackVisuals.create_path(world, points, start_trim, 0.0)
+            var belt_gap := JUNCTION_VISUAL_GAP if String(node.get("type", "normal")) == "junction" else 0.0
+            TrackVisuals.create_path(world, points, belt_gap, 0.0, true, true)
             drawn[key] = true
 
 
