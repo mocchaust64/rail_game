@@ -30,12 +30,17 @@ func _ready() -> void:
                 failures.append("%s contains a non-finite vertex" % layer_name)
                 break
 
-    var sleepers := path.get_node_or_null(NodePath("Sleepers"))
-    if not sleepers is MultiMeshInstance3D:
-        failures.append("sleepers must stay MultiMesh-batched")
+    var supports := path.get_node_or_null(NodePath("Supports"))
+    if not supports is MultiMeshInstance3D:
+        failures.append("rail supports must stay MultiMesh-batched")
     var fasteners := path.get_node_or_null(NodePath("RailFasteners"))
     if not fasteners is MultiMeshInstance3D:
         failures.append("rail fasteners must stay MultiMesh-batched")
+    var motion := path.get_node_or_null(NodePath("TrackMotion")) as TrackMotion
+    if motion == null:
+        failures.append("track must include continuous moving centre ribs")
+    elif motion.get_node_or_null(NodePath("MovingBeltRibs")) == null:
+        failures.append("moving centre ribs are missing")
 
     var junction_nodes := {
         "S": {"id": "S", "type": "source", "next": "J"},
@@ -53,10 +58,10 @@ func _ready() -> void:
     var junction := JunctionActor.new()
     add_child(junction)
     junction.configure(junction_nodes["J"], junction_positions)
+
     junction.state = 0
-    var angle_a := junction._target_angle()
-    junction.state = 1
-    var angle_b := junction._target_angle()
+    var angle_a := junction._angle_for_state(0)
+    var angle_b := junction._angle_for_state(1)
     var switch_arc := absf(wrapf(angle_a - angle_b, -PI, PI))
     if switch_arc < deg_to_rad(14.0):
         failures.append("switch rail states differ by only %.1f degrees" % rad_to_deg(switch_arc))
@@ -70,6 +75,18 @@ func _ready() -> void:
     elif (switch_pivot.mesh as CylinderMesh).top_radius > 0.38:
         failures.append("junction pivot is too large and reads like a UI button")
 
+    # Gameplay must not route into the new branch before the rail has actually
+    # finished moving there.
+    junction.state = 0
+    junction._perform_toggle(1)
+    if junction.state != 0:
+        failures.append("junction route changed before the physical rail connected")
+    if junction.selected_state() != 1:
+        failures.append("junction did not remember the requested visual target")
+    junction._on_toggle_finished()
+    if junction.state != 1:
+        failures.append("junction did not commit route when rail movement finished")
+
     remove_child(junction)
     junction.free()
     remove_child(path)
@@ -77,7 +94,7 @@ func _ready() -> void:
     VisualFactory._material_cache.clear()
 
     if failures.is_empty():
-        print("track visuals: PASS (continuous custom rails + physical switch)")
+        print("track visuals: PASS (moving custom rail + physical route commit)")
         get_tree().quit(0)
         return
     for failure in failures:
