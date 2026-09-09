@@ -5,6 +5,7 @@ extends RefCounted
 
 const LEVEL_PATH := "res://levels/level_%02d.json"
 const BLOCKING_TYPES := ["receiver", "source"]
+const JUNCTION_VISUAL_GAP := 0.52
 
 
 static func load_data(level_number: int) -> Dictionary:
@@ -42,11 +43,8 @@ static func build(level: Dictionary, world: Node3D, pool_size: int) -> Dictionar
         if String(node.get("type", "normal")) in BLOCKING_TYPES:
             occupied.append(Vector2(float(p[0]), float(p[1])))
 
-    # One source of truth for every edge curve. TrackVisuals draws it and
-    # ItemActor samples the same path while moving.
     TrackGeometry.rebuild(nodes_by_id, positions)
 
-    # Camera framing follows only the graph, never the decorative floor/props.
     var rig_parent := world.get_parent()
     if rig_parent is SceneRig:
         (rig_parent as SceneRig).frame_positions(positions)
@@ -106,10 +104,14 @@ static func _draw_tracks(nodes_by_id: Dictionary, positions: Dictionary, world: 
             var key := "%s>%s" % [id, target]
             if drawn.has(key):
                 continue
+
             var start: Vector3 = positions[id]
             var finish: Vector3 = positions[target]
             var points := TrackGeometry.path_for(id, target, start, finish)
-            TrackVisuals.create_path(world, points)
+            var start_trim := JUNCTION_VISUAL_GAP if String(node.get("type", "normal")) == "junction" else 0.0
+            var target_node: Dictionary = nodes_by_id[target]
+            var end_trim := JUNCTION_VISUAL_GAP if String(target_node.get("type", "normal")) == "junction" else 0.0
+            TrackVisuals.create_path(world, points, start_trim, end_trim)
             drawn[key] = true
 
 
