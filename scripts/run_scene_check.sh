@@ -21,8 +21,9 @@ PID=$!
 WATCHER=$!
 
 wait "$PID"; CODE=$?
-kill -9 "$WATCHER" 2>/dev/null
-pkill -9 -P "$WATCHER" 2>/dev/null
+pkill -TERM -P "$WATCHER" 2>/dev/null
+kill -TERM "$WATCHER" 2>/dev/null
+wait "$WATCHER" 2>/dev/null
 
 if [ "$CODE" -ge 128 ]; then
   echo "TIMEOUT or crash after ${LIMIT}s: $SCENE" >&2

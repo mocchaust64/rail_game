@@ -1,36 +1,38 @@
 class_name SceneRig
 extends Node3D
 # Camera, lights and environment, plus the shake that rides on the camera.
-#
-# Split out of GameController because none of it depends on the rules of the
-# game: it is the look of the board, and it is the part most often retuned.
-# Every value that needs tuning against a real render is a constant here.
+# Tuned against the reference: warm full-bleed ground, close toy camera and soft
+# contact shadows. Camera framing adapts to the graph rather than using one zoom
+# for ten differently-sized puzzles.
 
-# The board is roughly 9.2 by 14.1 units. Engine defaults assume a much larger
-# world, so these are tuned to that scale rather than left at their defaults.
-const KEY_LIGHT_EULER := Vector3(-48, 32, 0)
-const KEY_LIGHT_ENERGY := 1.45
-const KEY_LIGHT_COLOR := Color("#FFF6E8")
-const KEY_LIGHT_SOFTNESS := 1.4
-const SHADOW_BIAS := 0.024
-const SHADOW_NORMAL_BIAS := 0.85
-const SHADOW_MAX_DISTANCE := 60.0
-const AMBIENT_ENERGY := 0.55
+const KEY_LIGHT_EULER := Vector3(-51, 28, -8)
+const KEY_LIGHT_ENERGY := 1.55
+const KEY_LIGHT_COLOR := Color("#FFF4DE")
+const KEY_LIGHT_SOFTNESS := 2.2
+const SHADOW_BIAS := 0.022
+const SHADOW_NORMAL_BIAS := 0.72
+const SHADOW_MAX_DISTANCE := 42.0
+const AMBIENT_ENERGY := 0.62
 
-# Mild perspective. Note this is not only a depth cue: directional shadows do
-# not render at all under an orthographic camera in this engine build.
-const CAMERA_FOV := 30.0
-const CAMERA_POSITION := Vector3(0.0, 23.3, 16.9)
-const CAMERA_TARGET := Vector3(0, 0, 0.25)
+const CAMERA_FOV := 19.5
+const CAMERA_POSITION := Vector3(0.0, 16.2, 12.6)
+const CAMERA_TARGET := Vector3(0, 0.25, 0.15)
+const FRAME_WIDTH := 6.4
+const FRAME_DEPTH := 9.4
+const FRAME_SIDE_PADDING := 1.50
+const MIN_FRAME_SCALE := 0.82
+const MAX_FRAME_SCALE := 1.60
 
-const BOUNCE_POSITION := Vector3(-3.4, 3.6, 7.4)
-const BOUNCE_ENERGY := 0.38
-const BOUNCE_COLOR := Color("#FFE2C4")
+const BOUNCE_POSITION := Vector3(-3.8, 4.2, 5.0)
+const BOUNCE_ENERGY := 0.42
+const BOUNCE_COLOR := Color("#FFDDBE")
 
 var camera: Camera3D
 var world: Node3D
 
 var _shake := ScreenShake.new()
+var _base_camera_position := CAMERA_POSITION
+var _base_camera_target := CAMERA_TARGET
 
 
 func _ready() -> void:
@@ -41,10 +43,11 @@ func _ready() -> void:
     camera = Camera3D.new()
     camera.name = "GameCamera"
     camera.projection = Camera3D.PROJECTION_PERSPECTIVE
+    camera.keep_aspect = Camera3D.KEEP_WIDTH
     camera.fov = CAMERA_FOV
-    camera.position = CAMERA_POSITION
+    camera.position = _base_camera_position
     add_child(camera)
-    camera.look_at(CAMERA_TARGET, Vector3.UP)
+    camera.look_at(_base_camera_target, Vector3.UP)
 
     var key_light := DirectionalLight3D.new()
     key_light.rotation_degrees = KEY_LIGHT_EULER
@@ -58,11 +61,9 @@ func _ready() -> void:
     key_light.directional_shadow_max_distance = SHADOW_MAX_DISTANCE
     add_child(key_light)
 
-    # Warm bounce from the front-lower quadrant. Without it the shadowed faces of
-    # the white machines read as flat grey once ambient is turned down.
     var bounce := OmniLight3D.new()
     bounce.position = BOUNCE_POSITION
-    bounce.omni_range = 22.0
+    bounce.omni_range = 20.0
     bounce.light_energy = BOUNCE_ENERGY
     bounce.light_color = BOUNCE_COLOR
     bounce.shadow_enabled = false
@@ -71,31 +72,78 @@ func _ready() -> void:
     var holder := WorldEnvironment.new()
     var env := Environment.new()
     env.background_mode = Environment.BG_COLOR
-    env.background_color = Color("#BDD0D9")
+    env.background_color = Color("#F1E4D3")
     env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-    env.ambient_light_color = Color("#EAF3F8")
+    env.ambient_light_color = Color("#FFF0DC")
     env.ambient_light_energy = AMBIENT_ENERGY
     env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-    env.tonemap_white = 1.35
+    env.tonemap_white = 1.22
     env.glow_enabled = true
-    env.glow_intensity = 0.5
-    env.glow_bloom = 0.06
-    env.glow_hdr_threshold = 1.05
+    env.glow_intensity = 0.30
+    env.glow_bloom = 0.035
+    env.glow_hdr_threshold = 1.18
     holder.environment = env
     add_child(holder)
 
 
+# Called after level node positions are known. Only gameplay anchors matter;
+# floor/decor are intentionally excluded or they would force every level to the
+# same far-away overview shot again.
+func frame_positions(positions: Dictionary) -> void:
+    if positions.is_empty():
+        _base_camera_position = CAMERA_POSITION
+        _base_camera_target = CAMERA_TARGET
+        return
+
+    var first := true
+    var min_x := 0.0
+    var max_x := 0.0
+    var min_z := 0.0
+    var max_z := 0.0
+    for raw in positions.values():
+        var p: Vector3 = raw
+        if first:
+            min_x = p.x
+            max_x = p.x
+            min_z = p.z
+            max_z = p.z
+            first = false
+        else:
+            min_x = minf(min_x, p.x)
+            max_x = maxf(max_x, p.x)
+            min_z = minf(min_z, p.z)
+            max_z = maxf(max_z, p.z)
+
+    # Perspective enlarges the receiver row nearest the camera. Padding the
+    # graph's horizontal bounds keeps the machines visible without letting
+    # environment props affect framing.
+    var width := maxf(1.0, max_x - min_x + FRAME_SIDE_PADDING * 2.0)
+    var depth := maxf(1.0, max_z - min_z)
+    var scale := clampf(maxf(width / FRAME_WIDTH, depth / FRAME_DEPTH), MIN_FRAME_SCALE, MAX_FRAME_SCALE)
+    var centre_x := (min_x + max_x) * 0.5
+    var centre_z := (min_z + max_z) * 0.5
+
+    # Bias slightly towards the receiver half of the board; the foreground
+    # source is visually taller and needs less empty space beneath it.
+    _base_camera_target = Vector3(centre_x, 0.25, centre_z + 0.28)
+    _base_camera_position = Vector3(
+        centre_x,
+        CAMERA_POSITION.y * scale,
+        centre_z + CAMERA_POSITION.z * scale
+    )
+
+
 func _process(delta: float) -> void:
     _shake.advance(delta)
-    camera.position = CAMERA_POSITION + _shake.offset()
-    camera.rotation.z = _shake.roll()
+    camera.position = _base_camera_position + _shake.offset()
+    camera.look_at(_base_camera_target, Vector3.UP)
+    camera.rotation.z += _shake.roll()
 
 
 func add_trauma(amount: float) -> void:
     _shake.add_trauma(amount)
 
 
-# Clears everything the level built, leaving the rig itself intact.
 func clear_world() -> void:
     for child in world.get_children():
         world.remove_child(child)

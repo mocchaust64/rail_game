@@ -61,10 +61,62 @@ Run on Godot 4.7.stable.mono on macOS, Apple M2, Metal, Forward Mobile:
   `tests/prop_clearance_check.gd`
 - HUD layout at two aspect ratios, by screenshot
 
+## Reference-video visual branch — verified on desktop
+
+Branch: `ui/reference-video-pass`
+
+Run on Godot 4.7.2.stable (`ed1daf0bf`) on macOS, Apple M2, Metal,
+Forward Mobile:
+
+- `python3 scripts/verify_project.py`: PASS
+- full `scripts/run_godot_check.sh`: PASS, including import, runtime smoke,
+  all existing scene checks, gameplay flow and the new track/camera checks
+- levels 1, 3, 7 and 10 inspected in the running 540×960 portrait window
+- the original segmented rails showed severe saw-tooth edges and visible gaps;
+  continuous strip meshes remove those artifacts while slats remain batched
+- receiver machines were cropped in all four representative layouts; graph-only
+  framing now includes calibrated actor side padding and the four-level projection
+  check keeps receiver/source bounds inside the portrait viewport
+- a rendered 600-iteration Godot benchmark completed on level 7, but Godot's
+  benchmark JSON exposed startup timings only, so no FPS number is claimed
+
+Implemented on this branch:
+
+- warm full-bleed ground and saturated toy palette
+- closer camera with per-level graph auto-framing
+- shared sampled Bézier edge paths used by both conveyor rendering and cargo movement
+- continuous conveyor base/belt/rail meshes with MultiMesh-batched slats
+- curved-junction pointer tangents
+- physical source feeder lane with next-cargo slot
+- glossy ball cargo with a small shape glyph retained as a non-colour cue
+- level JSON coordinates remain identical to `main`; composition is improved by camera framing and curved presentation paths instead of moving gameplay nodes
+- low-chrome HUD with loose upcoming balls and circular waiting-buffer sockets
+- geometry tests cover endpoints, finite/forward samples, Y-split tangents,
+  distance clamping and straight fallback
+- continuous-track and portrait actor-bounds checks added to standard Godot QA
+
+Source-level review guarantees intentionally preserved:
+
+- level topology, node positions, receiver kinds and spawn order are unchanged
+- committed routing still happens by graph node, not by physical collision
+- pending junction toggle remains one deep
+- buffer rules, return ordering, win/fail conditions and game-state transitions are unchanged
+- cargo path endpoint is still the graph node position; curves are presentation between endpoints
+
+Still requires device verification:
+
+- touch target feel with the smaller junction art
+- safe-area composition on a physical notched phone
+- Android frame time, thermals and sustained FPS
+- audio/haptic device behavior
+- APK/AAB export: attempted with Godot 4.7.2, blocked because the matching
+  Android export templates are not installed on this machine
+
+Keep the PR in Draft until the same four representative levels receive a
+physical-phone video review.
+
 ## NOT VERIFIED — requires a device or a different runtime
 
-- Godot 4.7.2 specifically. The runtime used was 4.7.stable.mono, not the
-  pinned 4.7.2 patch release.
 - real touch hit-testing on Android. Synthesised clicks do not reach the Godot
   window on the verification machine, so no tap could be driven from outside
   the app. The tap tolerance arithmetic is covered by
@@ -90,11 +142,10 @@ Do **not** add ads, IAP, economy, backend, live events or dozens of extra levels
   level building were extracted because they have clean boundaries; routing,
   buffering and delivery share too much state with the state machine to split
   without a redesign, and a bad split there is worse than none.
-- Cargo silhouettes are weaker from directly above than they were. The previous
-  primitives read as circle, square and triangle from the top; the CC0 barrel
-  and coin both read as circles, so the three kinds now lean more on colour.
-  Colour plus the drum cluster still separates them, but this is a regression in
-  the shape channel and matters for a colourblind player.
+- On main/v0.3.2, cargo silhouettes are weaker from directly above than the old
+  primitives. The reference-video branch replaces those CC0 gameplay pieces
+  with glossy balls plus small white shape glyphs, which mitigates the colour-only
+  regression in source design; this still needs visual verification at phone scale.
 
 ## Render comparison
 

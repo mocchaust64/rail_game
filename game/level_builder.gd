@@ -1,17 +1,13 @@
 class_name LevelBuilder
 extends RefCounted
-# Turns level data into world nodes.
-#
-# Split out of GameController so that reading a level from disk and populating
-# the scene is one job with one entry point, separate from the rules that run
-# once the board exists.
+# Turns level data into world nodes. Gameplay topology stays in JSON; presentation
+# paths are rebuilt from that topology so visuals can curve without changing rules.
 
 const LEVEL_PATH := "res://levels/level_%02d.json"
 const BLOCKING_TYPES := ["receiver", "source"]
+const JUNCTION_VISUAL_GAP := 0.52
 
 
-# Reads and validates a level. Returns an empty dictionary on any failure, with
-# the reason already pushed as an error.
 static func load_data(level_number: int) -> Dictionary:
     var path := LEVEL_PATH % level_number
     var file := FileAccess.open(path, FileAccess.READ)
@@ -33,15 +29,10 @@ static func load_data(level_number: int) -> Dictionary:
     return level
 
 
-# Populates `world` and returns everything the controller needs to run the
-# level. Keys: nodes_by_id, positions, sources, receivers, junctions,
-# buffer_chute, item_pool.
 static func build(level: Dictionary, world: Node3D, pool_size: int) -> Dictionary:
     var nodes_by_id: Dictionary = {}
     var positions: Dictionary = {}
 
-    # Positions are read first because the floor decoration needs them: props
-    # are filtered away from wherever this level puts its receivers and sources.
     var occupied: Array[Vector2] = []
     for raw_node in level["nodes"]:
         var node: Dictionary = raw_node
@@ -52,8 +43,15 @@ static func build(level: Dictionary, world: Node3D, pool_size: int) -> Dictionar
         if String(node.get("type", "normal")) in BLOCKING_TYPES:
             occupied.append(Vector2(float(p[0]), float(p[1])))
 
+    TrackGeometry.rebuild(nodes_by_id, positions)
+
+    var rig_parent := world.get_parent()
+    if rig_parent is SceneRig:
+        (rig_parent as SceneRig).frame_positions(positions)
+
     var item_pool := ItemPool.new(world, pool_size)
-    VisualFactory.create_floor(world, occupied)
+    var floor_root := VisualFactory.create_floor(world, occupied)
+    _make_floor_full_bleed(floor_root)
     var buffer_chute := VisualFactory.create_buffer_chute(world)
 
     _draw_tracks(nodes_by_id, positions, world)
@@ -94,24 +92,51 @@ static func build(level: Dictionary, world: Node3D, pool_size: int) -> Dictionar
     }
 
 
-# One track per connection, drawn once even when two nodes route to the same
-# target from different branches.
+static func _make_floor_full_bleed(floor_root: Node3D) -> void:
+    # VisualFactory keeps the old floor structure because older checks depend on
+    # its decor group. Hide only the lighter inset and enlarge the warm ground,
+    # removing the obvious rectangular "board on a background" read.
+    if floor_root.get_child_count() > 0:
+        var ground := floor_root.get_child(0) as MeshInstance3D
+        if ground != null and ground.mesh is BoxMesh:
+            (ground.mesh as BoxMesh).size = Vector3(16.0, 0.22, 22.0)
+    if floor_root.get_child_count() > 1:
+        var inset := floor_root.get_child(1) as Node3D
+        if inset != null:
+            inset.visible = false
+
+
 static func _draw_tracks(nodes_by_id: Dictionary, positions: Dictionary, world: Node3D) -> void:
     var drawn: Dictionary = {}
-    for id in nodes_by_id:
+    for raw_id in nodes_by_id:
+        var id := String(raw_id)
         var node: Dictionary = nodes_by_id[id]
-        var node_type := String(node.get("type", "normal"))
-        var targets: Array[String] = []
-        if node_type == "junction":
-            targets.append(String(node["out_a"]))
-            targets.append(String(node["out_b"]))
-        elif node_type != "receiver":
-            targets.append(String(node.get("next", "")))
-        for target in targets:
-            if target.is_empty():
+        var targets := _targets(node)
+        for raw_target in targets:
+            var target := String(raw_target)
+            if target.is_empty() or not positions.has(target):
                 continue
             var key := "%s>%s" % [id, target]
             if drawn.has(key):
                 continue
-            VisualFactory.create_track(world, positions[id], positions[target])
+
+            var start: Vector3 = positions[id]
+            var finish: Vector3 = positions[target]
+            var points := TrackGeometry.path_for(id, target, start, finish)
+
+            var start_trim := JUNCTION_VISUAL_GAP if String(node.get("type", "normal")) == "junction" else 0.0
+            TrackVisuals.create_path(world, points, start_trim, 0.0)
             drawn[key] = true
+
+
+static func _targets(node: Dictionary) -> Array:
+    var targets: Array = []
+    var node_type := String(node.get("type", "normal"))
+    if node_type == "junction":
+        targets.append(String(node["out_a"]))
+        targets.append(String(node["out_b"]))
+    elif node_type != "receiver":
+        var next_id := String(node.get("next", ""))
+        if not next_id.is_empty():
+            targets.append(next_id)
+    return targets

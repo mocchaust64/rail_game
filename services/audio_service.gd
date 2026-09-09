@@ -51,7 +51,7 @@ func _ready() -> void:
     _ambient_player.stream = ambient_stream
     _ambient_player.volume_db = _music_base_db
     add_child(_ambient_player)
-    if SaveService.audio_enabled:
+    if SaveService.audio_enabled and DisplayServer.get_name() != "headless":
         _ambient_player.play()
 
 
@@ -64,7 +64,8 @@ func play(name: String, pitch: float = 1.0, volume_db: float = 0.0) -> void:
     voice.stream = _streams[name]
     voice.pitch_scale = pitch + randf_range(-PITCH_JITTER, PITCH_JITTER)
     voice.volume_db = volume_db
-    voice.play()
+    if DisplayServer.get_name() != "headless":
+        voice.play()
 
 
 func voice_count() -> int:

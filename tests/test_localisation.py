@@ -45,7 +45,9 @@ class LocalisationTests(unittest.TestCase):
                 if not value.startswith('"'):
                     continue
                 # Icon glyphs carry no language and need no translation.
-                if not re.search(r"[A-Za-z]", value):
+                literal = re.match(r'"(?:\\.|[^"\\])*"', value).group(0)
+                visible_text = re.sub(r"%[-+0-9.]*[A-Za-z]", "", literal)
+                if not re.search(r"[A-Za-z]", visible_text):
                     continue
                 offenders.append("%s:%d %s" % (path.name, number, value))
         self.assertEqual(offenders, [], "hardcoded UI text:\n  " + "\n  ".join(offenders))

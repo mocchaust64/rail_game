@@ -12,7 +12,7 @@ var _idle_clock: float = 0.0
 func configure(id_value: String, kind_value: String) -> void:
     receiver_id = id_value
     kind = kind_value
-    var parts := VisualFactory.create_receiver_shell(self, kind)
+    var parts := MachineVisuals.create_receiver_shell(self, kind)
     _mouth = parts["mouth"] as MeshInstance3D
     _badge_anchor = parts["badge_anchor"] as Node3D
     _lamp = parts["lamp"] as MeshInstance3D
@@ -21,7 +21,7 @@ func _process(delta: float) -> void:
     _idle_clock += delta
     if _badge_anchor != null:
         _badge_anchor.rotation.y = sin(_idle_clock * 1.25) * 0.08
-        _badge_anchor.position.y = 1.48 + sin(_idle_clock * 2.0) * 0.025
+        _badge_anchor.position.y = 1.30 + sin(_idle_clock * 2.0) * 0.02
 
 func accept() -> void:
     _kill_reaction_tween()

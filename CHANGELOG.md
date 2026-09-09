@@ -1,5 +1,40 @@
 # Changelog
 
+## Unreleased — reference-video visual pass
+
+Composition
+
+- warm full-bleed play surface replaces the floating white prototype board
+- perspective camera auto-frames each level from gameplay anchors with enough side padding to keep the near receiver row on-screen
+- all level JSON coordinates remain identical to `main`; composition comes from camera framing and curved presentation paths, so puzzle timing is not altered by this visual pass
+- source preview is now a physical three-slot feeder lane instead of a floating icon
+
+Track presentation
+
+- `gameplay/track_geometry.gd` builds deterministic sampled Bézier paths from the existing graph
+- `gameplay/track_visuals.gd` renders the belt, base and rails as continuous strip meshes; repeated slats remain MultiMesh-batched
+- cargo samples the same arc-length path the renderer draws, so it cannot cut across a visual curve
+- junction arrows use the outgoing curve tangent rather than pointing directly at the receiver
+
+Art and HUD
+
+- glossy ball cargo and saturated red/blue/yellow destination machines replace the muted CC0 gameplay pieces
+- compact mechanical junctions, warmer palette, metal rails, dark rubber belts and corner scenery move the look toward the supplied reference video
+- HUD chrome is stripped back: loose upcoming balls, circular sand-coloured buffer sockets, smaller top controls and icon-only tutorial cue
+
+Feel
+
+- cargo rolls along the current curve tangent
+- spawn uses a short toy-like squash/pop; receiver delivery reads as the ball being swallowed rather than evaporating upward
+
+Checks
+
+- added track geometry, continuous-track visual and portrait camera-framing checks
+- fixed the prop-clearance runner so project autoload dependencies compile during the check
+- headless QA no longer starts audio playback or logs corrupt-save recovery as an engine error
+- Godot import QA uses the native `--import` command instead of the crashing `--editor --quit` combination
+- source verifier requires the shared track geometry/renderer files so they cannot be removed as apparent dead code
+
 ## 0.3.2
 
 Art is data
