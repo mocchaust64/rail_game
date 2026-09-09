@@ -1,8 +1,9 @@
 class_name SceneRig
 extends Node3D
 # Camera, lights and environment, plus the shake that rides on the camera.
-# Visual pass is tuned against the user's reference video: warm background,
-# close toy-diorama camera and stronger contact shadows.
+# Tuned against the reference: warm full-bleed ground, close toy camera and soft
+# contact shadows. Camera framing adapts to the graph rather than using one zoom
+# for ten differently-sized puzzles.
 
 const KEY_LIGHT_EULER := Vector3(-51, 28, -8)
 const KEY_LIGHT_ENERGY := 1.55
@@ -13,11 +14,13 @@ const SHADOW_NORMAL_BIAS := 0.72
 const SHADOW_MAX_DISTANCE := 42.0
 const AMBIENT_ENERGY := 0.62
 
-# Closer and lower than the previous overview shot. The reference fills the
-# portrait with the machines and belt, rather than showing an entire white board.
 const CAMERA_FOV := 34.0
 const CAMERA_POSITION := Vector3(0.0, 16.2, 12.6)
 const CAMERA_TARGET := Vector3(0, 0.25, 0.15)
+const FRAME_WIDTH := 6.4
+const FRAME_DEPTH := 9.4
+const MIN_FRAME_SCALE := 0.82
+const MAX_FRAME_SCALE := 1.13
 
 const BOUNCE_POSITION := Vector3(-3.8, 4.2, 5.0)
 const BOUNCE_ENERGY := 0.42
@@ -27,6 +30,8 @@ var camera: Camera3D
 var world: Node3D
 
 var _shake := ScreenShake.new()
+var _base_camera_position := CAMERA_POSITION
+var _base_camera_target := CAMERA_TARGET
 
 
 func _ready() -> void:
@@ -38,9 +43,9 @@ func _ready() -> void:
     camera.name = "GameCamera"
     camera.projection = Camera3D.PROJECTION_PERSPECTIVE
     camera.fov = CAMERA_FOV
-    camera.position = CAMERA_POSITION
+    camera.position = _base_camera_position
     add_child(camera)
-    camera.look_at(CAMERA_TARGET, Vector3.UP)
+    camera.look_at(_base_camera_target, Vector3.UP)
 
     var key_light := DirectionalLight3D.new()
     key_light.rotation_degrees = KEY_LIGHT_EULER
@@ -79,10 +84,55 @@ func _ready() -> void:
     add_child(holder)
 
 
+# Called after level node positions are known. Only gameplay anchors matter;
+# floor/decor are intentionally excluded or they would force every level to the
+# same far-away overview shot again.
+func frame_positions(positions: Dictionary) -> void:
+    if positions.is_empty():
+        _base_camera_position = CAMERA_POSITION
+        _base_camera_target = CAMERA_TARGET
+        return
+
+    var first := true
+    var min_x := 0.0
+    var max_x := 0.0
+    var min_z := 0.0
+    var max_z := 0.0
+    for raw in positions.values():
+        var p: Vector3 = raw
+        if first:
+            min_x = p.x
+            max_x = p.x
+            min_z = p.z
+            max_z = p.z
+            first = false
+        else:
+            min_x = minf(min_x, p.x)
+            max_x = maxf(max_x, p.x)
+            min_z = minf(min_z, p.z)
+            max_z = maxf(max_z, p.z)
+
+    var width := maxf(1.0, max_x - min_x)
+    var depth := maxf(1.0, max_z - min_z)
+    var scale := clampf(maxf(width / FRAME_WIDTH, depth / FRAME_DEPTH), MIN_FRAME_SCALE, MAX_FRAME_SCALE)
+    var centre_x := (min_x + max_x) * 0.5
+    var centre_z := (min_z + max_z) * 0.5
+
+    # Bias slightly towards the receiver half of the board; the foreground
+    # source is visually taller and needs less empty space beneath it.
+    _base_camera_target = Vector3(centre_x, 0.25, centre_z + 0.28)
+    _base_camera_position = Vector3(
+        centre_x,
+        CAMERA_POSITION.y * scale,
+        centre_z + CAMERA_POSITION.z * scale
+    )
+
+
 func _process(delta: float) -> void:
     _shake.advance(delta)
-    camera.position = CAMERA_POSITION + _shake.offset()
-    camera.rotation.z = _shake.roll()
+    camera.position = _base_camera_position + _shake.offset()
+    camera.look_at(_base_camera_target, Vector3.UP)
+    camera.rotation.z += _shake.roll()
 
 
 func add_trauma(amount: float) -> void:
