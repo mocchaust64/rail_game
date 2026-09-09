@@ -84,6 +84,13 @@ static func build(level: Dictionary, world: Node3D, pool_size: int) -> Dictionar
                 if String(node.get("visual", "")) == "processor":
                     var processor := MachineVisuals.create_processor_shell(world)
                     processor.position = positions[id]
+                    var next_id := String(node.get("next", ""))
+                    if not next_id.is_empty() and positions.has(next_id):
+                        var path := TrackGeometry.path_for(String(id), next_id, positions[id], positions[next_id])
+                        if path.size() >= 2:
+                            var tangent := path[1] - path[0]
+                            if tangent.length_squared() > 0.0001:
+                                processor.rotation.y = atan2(tangent.x, tangent.z)
 
     return {
         "nodes_by_id": nodes_by_id,
