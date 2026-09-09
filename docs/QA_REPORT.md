@@ -48,16 +48,32 @@
 - runtime level validator checks two distinct junction outputs
 - debug level navigation is hidden outside debug builds
 
-## NOT VERIFIED — requires Godot/device runtime
+## VERIFIED in v0.3.1 on a desktop Godot runtime
 
-The authoring container still has no Godot executable or Android SDK. Therefore the following are **not claimed as passed**:
+Run on Godot 4.7.stable.mono on macOS, Apple M2, Metal, Forward Mobile:
 
-- Godot 4.7.2 GDScript parser/import
-- Godot OBJ import of bundled vendor geometry
-- actual in-engine 3D render inspection
-- final scale/occlusion of CC0 props in the live camera
-- real touch hit-testing on Android
-- viewport/safe-area behavior across physical phones
+- GDScript parse and import: clean, after fixing four Variant-inference errors
+  that previously stopped the project from loading
+- OBJ import of the bundled vendor geometry
+- in-engine 3D render inspection, by screenshot of the running window
+- scale and occlusion of the CC0 props in the live camera: props no longer
+  overlap receivers or sources, asserted across all ten levels by
+  `tests/prop_clearance_check.gd`
+- HUD layout at two aspect ratios, by screenshot
+
+## NOT VERIFIED — requires a device or a different runtime
+
+- Godot 4.7.2 specifically. The runtime used was 4.7.stable.mono, not the
+  pinned 4.7.2 patch release.
+- real touch hit-testing on Android. Synthesised clicks do not reach the Godot
+  window on the verification machine, so no tap could be driven from outside
+  the app. The tap tolerance arithmetic is covered by
+  `tests/tap_radius_check.tscn` instead.
+- safe-area behaviour on a physical notched phone. The inset code is exercised
+  on desktop, where the correct answer is zero, so only the zero case is proven.
+- frame rate after the renderer and camera changes. Both the move to the Mobile
+  renderer and the perspective camera add cost, and neither was profiled on
+  target hardware. This is the largest open risk in the release.
 - audio/haptic device behavior
 - APK/AAB export
 - real frame-time/thermal profiling
@@ -67,3 +83,8 @@ These are release blockers for anything beyond an MVP test. Run `scripts/run_god
 ## Product QA rule
 
 Do **not** add ads, IAP, economy, backend, live events or dozens of extra levels before first-player validation. The v0.3 art pass is intentionally strong enough to judge the real tactile/visual appeal, while remaining small enough to kill or redesign the mechanic without sunk-cost pressure.
+
+## Render comparison
+
+`docs/render_before_v030.png` and `docs/render_after_v031.png` are the same
+level captured from the running window before and after the v0.3.1 pass.

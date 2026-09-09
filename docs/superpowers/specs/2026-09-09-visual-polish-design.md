@@ -90,9 +90,15 @@ File: `gameplay/visual_factory.gd`, decoration block (currently lines 286-345).
 
 Root cause: prop positions are hardcoded global constants, for example the
 loaded pallet at `Vector3(3.66, -0.12, 5.42)`, while receiver and source
-positions come from per-level data in `levels/`. Level 3 places a receiver at
-a position already occupied by a pallet, producing the white mass overlapping
-the yellow receiver.
+positions come from per-level data in `levels/`.
+
+Measured, not estimated: the regression check counts 125 clearance violations
+across all ten levels, not the single level this section originally named. Both
+right-side barrels overlap a receiver on every level; the visible white mass
+next to the yellow receiver is one of them. The first version of the check
+reported only 3 violations because it matched props by node name, and Godot
+discards duplicate node names on `add_child`, so seven of the eight vendor
+props were invisible to it.
 
 Fix: the decoration step accepts the level's occupied XZ points and skips any
 prop whose centre falls within 1.8 world units of one. That radius is derived
@@ -109,8 +115,14 @@ Prop tint is additionally muted so the dressing reads as background.
 File: `game/game_controller.gd` (currently lines 44-50).
 
 The camera moves from orthographic to a mild perspective projection, field of
-view approximately 30 degrees. This preserves the diorama reading while
-restoring depth cues that orthographic projection removes entirely.
+view approximately 30 degrees.
+
+This turned out to be **required, not cosmetic**. Directional shadows do not
+render at all with an orthographic camera in this Godot build. Shadows were
+enabled in code and every light setting verified correct at runtime, yet no
+shadow appeared under either the Mobile or the Forward+ renderer; they appear
+immediately when the projection becomes perspective. So section 2 depends on
+this section, and the two cannot be shipped separately.
 
 Required companion change: junction hit-testing at `game_controller.gd:456`
 compares against a fixed `TAP_RADIUS_PX` of 118. Under orthographic projection
@@ -160,13 +172,31 @@ Every item must pass before the work is called done.
    1.8 world units of any receiver or source, across all ten levels. This is
    the automated guard for defect 4, which no existing test covers. It is
    written before the fix and must fail first.
-6. Before and after screenshots of the running app at the same level, captured
+6. A tap-radius check asserting the tolerance converts correctly per junction.
+7. Before and after screenshots of the running app at the same level, captured
    from the real window, showing the change.
 
-Items 1 through 5 are automated. Item 6 is the human judgement gate.
+Items 1 through 6 are automated. Item 7 is the human judgement gate.
+
+Not verifiable here: synthesised clicks do not reach the Godot window on this
+machine, so no interaction can be driven from outside the app. Tap behaviour is
+covered by the arithmetic check instead of an end-to-end tap.
+
+## Deviations from this spec during implementation
+
+- The clearance filter stayed in `visual_factory.gd` instead of moving to its
+  own `prop_placement.gd`. It is ten lines used in one place; a separate file
+  would have been structure without a reader.
+- `levels/prop_layout.json` was not created. It existed only so a Python mirror
+  test could read the layout, and the check that was actually written measures
+  the real scene the engine builds, which is stronger. The layout stayed in
+  GDScript as a named constant.
+- A sky-based ambient source was specified and then reverted. It blew the render
+  out to white; a colour ambient with the energy dropped achieves the intended
+  separation without that risk.
 
 ## Open risk
 
 Frame rate on low-end Android after the renderer change is unmeasured and
 unmeasurable in this environment. It must be checked on a physical device
-before shipping.
+before shipping. The renderer change and the perspective camera both add cost.
