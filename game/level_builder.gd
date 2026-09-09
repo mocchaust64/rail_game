@@ -46,6 +46,11 @@ static func build(level: Dictionary, world: Node3D, pool_size: int) -> Dictionar
     # ItemActor samples the same path while moving.
     TrackGeometry.rebuild(nodes_by_id, positions)
 
+    # Camera framing follows only the graph, never the decorative floor/props.
+    var rig_parent := world.get_parent()
+    if rig_parent is SceneRig:
+        (rig_parent as SceneRig).frame_positions(positions)
+
     var item_pool := ItemPool.new(world, pool_size)
     VisualFactory.create_floor(world, occupied)
     var buffer_chute := VisualFactory.create_buffer_chute(world)
