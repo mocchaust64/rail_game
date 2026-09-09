@@ -50,7 +50,8 @@ static func build(level: Dictionary, world: Node3D, pool_size: int) -> Dictionar
         (rig_parent as SceneRig).frame_positions(positions)
 
     var item_pool := ItemPool.new(world, pool_size)
-    VisualFactory.create_floor(world, occupied)
+    var floor_root := VisualFactory.create_floor(world, occupied)
+    _make_floor_full_bleed(floor_root)
     var buffer_chute := VisualFactory.create_buffer_chute(world)
 
     _draw_tracks(nodes_by_id, positions, world)
@@ -91,6 +92,20 @@ static func build(level: Dictionary, world: Node3D, pool_size: int) -> Dictionar
     }
 
 
+static func _make_floor_full_bleed(floor_root: Node3D) -> void:
+    # VisualFactory keeps the old floor structure because older checks depend on
+    # its decor group. Hide only the lighter inset and enlarge the warm ground,
+    # removing the obvious rectangular "board on a background" read.
+    if floor_root.get_child_count() > 0:
+        var ground := floor_root.get_child(0) as MeshInstance3D
+        if ground != null and ground.mesh is BoxMesh:
+            (ground.mesh as BoxMesh).size = Vector3(16.0, 0.22, 22.0)
+    if floor_root.get_child_count() > 1:
+        var inset := floor_root.get_child(1) as Node3D
+        if inset != null:
+            inset.visible = false
+
+
 static func _draw_tracks(nodes_by_id: Dictionary, positions: Dictionary, world: Node3D) -> void:
     var drawn: Dictionary = {}
     for raw_id in nodes_by_id:
@@ -109,9 +124,6 @@ static func _draw_tracks(nodes_by_id: Dictionary, positions: Dictionary, world: 
             var finish: Vector3 = positions[target]
             var points := TrackGeometry.path_for(id, target, start, finish)
 
-            # The common incoming rail reaches the switch centre. Only the two
-            # outgoing branches start after a short gap; the rotating rail arm
-            # inside JunctionActor fills that gap for the selected route.
             var start_trim := JUNCTION_VISUAL_GAP if String(node.get("type", "normal")) == "junction" else 0.0
             TrackVisuals.create_path(world, points, start_trim, 0.0)
             drawn[key] = true
