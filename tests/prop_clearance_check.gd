@@ -61,7 +61,8 @@ func _check_level(path: String) -> Array[String]:
 					"level %02d: prop at (%.2f, %.2f) is %.2f from actor at (%.2f, %.2f), needs %.2f"
 					% [level_id, flat.x, flat.y, d, point.x, point.y, CLEARANCE_RADIUS]
 				)
-	world.queue_free()
+	root.remove_child(world)
+	world.free()
 	return violations
 
 
@@ -98,7 +99,8 @@ func _check_layout_is_not_stripped(level_files: Array[String]) -> Array[String]:
 				"level %02d: only %d of %d decoration nodes survived the clearance filter"
 				% [int(level["id"]), kept, EXPECTED_DECOR_NODES]
 			)
-		world.queue_free()
+		root.remove_child(world)
+		world.free()
 	return problems
 
 
@@ -109,7 +111,8 @@ func _check_filter_actually_drops() -> Array[String]:
 	var on_top_of_a_barrel: Array[Vector2] = [Vector2(-4.12, -1.95)]
 	VisualFactory.create_floor(world, on_top_of_a_barrel)
 	var kept := _collect_props(world).size()
-	world.queue_free()
+	root.remove_child(world)
+	world.free()
 	if kept >= EXPECTED_DECOR_NODES:
 		return ["clearance filter is a no-op: %d nodes kept with an actor placed on a prop" % kept]
 	return []
