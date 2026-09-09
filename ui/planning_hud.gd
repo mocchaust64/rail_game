@@ -69,10 +69,11 @@ func show_sorter(sorter_id: String, mapping: Array, cost: int) -> void:
         return
     _config_panel.visible = true
     _config_title.text = "SORTER %s" % sorter_id
-    _hint_label.text = "Tap a lane to swap its colour"
+    _hint_label.text = "Choose which colour uses each black rail"
     for i in range(_lane_buttons.size()):
         var kind := String(mapping[i]) if i < mapping.size() else "red"
         _lane_buttons[i].text = "%d   %s" % [i + 1, kind.to_upper()]
+        _style_lane_button(_lane_buttons[i], kind)
     _remove_button.text = "REMOVE   +%d GOLD" % cost
 
 
@@ -133,7 +134,7 @@ func _build() -> void:
 
     _hint_label = Label.new()
     _hint_label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-    _hint_label.position = Vector2(-310, -238)
+    _hint_label.position = Vector2(-310, -330)
     _hint_label.size = Vector2(620, 38)
     _hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     _hint_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -143,7 +144,7 @@ func _build() -> void:
 
     _config_panel = PanelContainer.new()
     _config_panel.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-    _config_panel.position = Vector2(-315, -198)
+    _config_panel.position = Vector2(-315, -288)
     _config_panel.size = Vector2(630, 112)
     _config_panel.mouse_filter = Control.MOUSE_FILTER_STOP
     _config_panel.add_theme_stylebox_override("panel", _panel_style(Color("#F8EBDDFA"), 22, Color(0,0,0,0.10), 9))
@@ -171,7 +172,7 @@ func _build() -> void:
         button.text = "%d   RED" % (i + 1)
         button.custom_minimum_size = Vector2(142, 42)
         button.add_theme_font_size_override("font_size", 15)
-        _style_secondary_button(button)
+        _style_lane_button(button, "red")
         var lane_index := i
         button.pressed.connect(func() -> void: lane_requested.emit(lane_index))
         lane_row.add_child(button)
@@ -188,7 +189,7 @@ func _build() -> void:
     _run_button = Button.new()
     _run_button.text = "RUN"
     _run_button.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-    _run_button.position = Vector2(-120, -72)
+    _run_button.position = Vector2(-120, -154)
     _run_button.size = Vector2(240, 56)
     _run_button.mouse_filter = Control.MOUSE_FILTER_STOP
     _run_button.add_theme_font_size_override("font_size", 21)
@@ -303,6 +304,37 @@ func _style_run_button(button: Button) -> void:
     button.add_theme_color_override("font_hover_color", Color.WHITE)
     button.add_theme_color_override("font_pressed_color", Color.WHITE)
     button.add_theme_color_override("font_disabled_color", Color("#F1E9E1"))
+
+
+func _style_lane_button(button: Button, kind: String) -> void:
+    var normal := StyleBoxFlat.new()
+    var pressed := StyleBoxFlat.new()
+    match kind:
+        "red":
+            normal.bg_color = Color("#F1C0B4")
+            pressed.bg_color = Color("#E4A997")
+        "blue":
+            normal.bg_color = Color("#BDD2E6")
+            pressed.bg_color = Color("#A7C1DA")
+        "yellow":
+            normal.bg_color = Color("#EAD79C")
+            pressed.bg_color = Color("#DCC47D")
+        _:
+            normal.bg_color = Color("#EFE1D1")
+            pressed.bg_color = Color("#DCC9B5")
+
+    for style in [normal, pressed]:
+        style.corner_radius_top_left = 14
+        style.corner_radius_top_right = 14
+        style.corner_radius_bottom_left = 14
+        style.corner_radius_bottom_right = 14
+
+    for state in ["normal", "hover", "focus"]:
+        button.add_theme_stylebox_override(state, normal)
+    button.add_theme_stylebox_override("pressed", pressed)
+    button.add_theme_color_override("font_color", Color("#473F38"))
+    button.add_theme_color_override("font_hover_color", Color("#473F38"))
+    button.add_theme_color_override("font_pressed_color", Color("#473F38"))
 
 
 func _style_secondary_button(button: Button) -> void:
