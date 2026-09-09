@@ -19,7 +19,7 @@ const CAMERA_POSITION := Vector3(0.0, 16.2, 12.6)
 const CAMERA_TARGET := Vector3(0, 0.25, 0.15)
 const FRAME_WIDTH := 6.4
 const FRAME_DEPTH := 9.4
-const FRAME_SIDE_PADDING := 1.75
+const FRAME_SIDE_PADDING := 1.50
 const MIN_FRAME_SCALE := 0.82
 const MAX_FRAME_SCALE := 1.60
 

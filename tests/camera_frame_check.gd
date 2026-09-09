@@ -45,6 +45,8 @@ func _check_level(rig: SceneRig, level_number: int, viewport_size: Vector2, fail
 
     rig.frame_positions(positions)
     rig._process(0.0)
+    var min_screen_y := viewport_size.y
+    var max_screen_y := 0.0
     for raw_node in level["nodes"]:
         var node: Dictionary = raw_node
         if String(node["type"]) not in ["source", "receiver"]:
@@ -54,5 +56,10 @@ func _check_level(rig: SceneRig, level_number: int, viewport_size: Vector2, fail
             for z in [-ACTOR_HALF_DEPTH, ACTOR_HALF_DEPTH]:
                 for y in [0.0, ACTOR_HEIGHT]:
                     var screen := rig.camera.unproject_position(centre + Vector3(float(x), float(y), float(z)))
+                    min_screen_y = minf(min_screen_y, screen.y)
+                    max_screen_y = maxf(max_screen_y, screen.y)
                     if screen.x < SCREEN_MARGIN or screen.x > viewport_size.x - SCREEN_MARGIN or screen.y < SCREEN_MARGIN or screen.y > viewport_size.y - SCREEN_MARGIN:
                         failures.append("level %d %s projects outside the safe frame at %s" % [level_number, node["id"], screen])
+    var vertical_coverage := (max_screen_y - min_screen_y) / viewport_size.y
+    if vertical_coverage < 0.55:
+        failures.append("level %d fills only %.1f%% of portrait height" % [level_number, vertical_coverage * 100.0])
