@@ -6,7 +6,7 @@ Composition
 
 - warm full-bleed play surface replaces the floating white prototype board
 - closer perspective camera auto-frames each level from gameplay anchors
-- receiver rows are aligned on levels 3–8 and 10 while spawn order/topology stay unchanged
+- all level JSON coordinates remain identical to `main`; composition comes from camera framing and curved presentation paths, so puzzle timing is not altered by this visual pass
 - source preview is now a physical three-slot feeder lane instead of a floating icon
 
 Track presentation
