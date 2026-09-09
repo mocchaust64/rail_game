@@ -15,7 +15,6 @@ var segment_length: float = 1.0
 var state: ItemState = ItemState.SPAWNING
 
 var _visual: Node3D
-var _shadow: MeshInstance3D
 var _travel_clock: float = 0.0
 
 func configure(item_kind: String, source_id: String, start_id: String, next_id: String, start_pos: Vector3, next_pos: Vector3, move_speed: float) -> void:
@@ -34,17 +33,6 @@ func _build_visual() -> void:
     _visual = VisualFactory.create_kind_visual(kind, 0.34)
     add_child(_visual)
 
-    _shadow = MeshInstance3D.new()
-    var shadow_mesh := CylinderMesh.new()
-    shadow_mesh.top_radius = 0.30
-    shadow_mesh.bottom_radius = 0.30
-    shadow_mesh.height = 0.018
-    shadow_mesh.radial_segments = 20
-    _shadow.mesh = shadow_mesh
-    _shadow.position = Vector3(0, -0.42, 0)
-    _shadow.material_override = VisualFactory.material(Color("#83939D"), 1.0)
-    _shadow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-    add_child(_shadow)
 
 func start_segment(start_id: String, next_id: String, start_pos: Vector3, next_pos: Vector3) -> void:
     from_id = start_id

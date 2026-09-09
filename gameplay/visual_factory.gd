@@ -1,8 +1,8 @@
 class_name VisualFactory
 extends RefCounted
 
-const FLOOR_COLOR := Color("#DDE8EC")
-const FLOOR_EDGE := Color("#C2D2D9")
+const FLOOR_COLOR := Color("#C6D3D9")
+const FLOOR_EDGE := Color("#AEBFC8")
 const BELT_COLOR := Color("#28384C")
 const BELT_INNER := Color("#51677C")
 const BELT_SLAT := Color("#6E8294")
@@ -54,7 +54,7 @@ static func create_floor(parent: Node3D, occupied: Array = []) -> Node3D:
     floor.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     root.add_child(floor)
 
-    var inset := _box(Vector3(8.72, 0.05, 13.62), Color("#EAF1F4"), 0.98)
+    var inset := _box(Vector3(8.72, 0.05, 13.62), Color("#D5E1E7"), 0.98)
     inset.position = Vector3(0, -0.17, 0)
     inset.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     root.add_child(inset)
