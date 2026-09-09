@@ -61,6 +61,45 @@ Run on Godot 4.7.stable.mono on macOS, Apple M2, Metal, Forward Mobile:
   `tests/prop_clearance_check.gd`
 - HUD layout at two aspect ratios, by screenshot
 
+## Reference-video visual branch — source-reviewed, engine verification pending
+
+Branch: `ui/reference-video-pass`
+
+Implemented on this branch:
+
+- warm full-bleed ground and saturated toy palette
+- closer camera with per-level graph auto-framing
+- shared sampled Bézier edge paths used by both conveyor rendering and cargo movement
+- MultiMesh conveyor layers to keep curve smoothness from multiplying scene-node count
+- curved-junction pointer tangents
+- physical source feeder lane with next-cargo slot
+- glossy ball cargo with a small shape glyph retained as a non-colour cue
+- aligned three-machine receiver rows on levels 3–8 and 10
+- low-chrome HUD with loose upcoming balls and circular waiting-buffer sockets
+- `tests/track_geometry_check.tscn` added to the standard Godot check
+
+Source-level review guarantees intentionally preserved:
+
+- level topology, receiver kinds and spawn order are unchanged
+- committed routing still happens by graph node, not by physical collision
+- pending junction toggle remains one deep
+- buffer rules, return ordering, win/fail conditions and game-state transitions are unchanged
+- cargo path endpoint is still the graph node position; curves are presentation between endpoints
+
+Not yet verified for this branch:
+
+- Godot 4.7.2 parse/import of the newly added `TrackGeometry` / `TrackVisuals` scripts
+- actual MultiMesh transforms/materials in the Mobile renderer
+- all ten levels visually after auto-framing and receiver-row alignment
+- touch target feel with the smaller junction art
+- frame time on an Android device after the curved-track MultiMesh pass
+- safe-area composition with the new minimal HUD on a physical notched phone
+
+Do not merge this visual branch solely from source review. First run
+`scripts/run_godot_check.*`, then capture levels 1, 3, 7 and 10 on the same phone
+or viewport used for the supplied reference comparison. Those four levels cover
+the single split, three-way cascade, dual source and final dual-source layouts.
+
 ## NOT VERIFIED — requires a device or a different runtime
 
 - Godot 4.7.2 specifically. The runtime used was 4.7.stable.mono, not the
@@ -90,11 +129,10 @@ Do **not** add ads, IAP, economy, backend, live events or dozens of extra levels
   level building were extracted because they have clean boundaries; routing,
   buffering and delivery share too much state with the state machine to split
   without a redesign, and a bad split there is worse than none.
-- Cargo silhouettes are weaker from directly above than they were. The previous
-  primitives read as circle, square and triangle from the top; the CC0 barrel
-  and coin both read as circles, so the three kinds now lean more on colour.
-  Colour plus the drum cluster still separates them, but this is a regression in
-  the shape channel and matters for a colourblind player.
+- On main/v0.3.2, cargo silhouettes are weaker from directly above than the old
+  primitives. The reference-video branch replaces those CC0 gameplay pieces
+  with glossy balls plus small white shape glyphs, which mitigates the colour-only
+  regression in source design; this still needs visual verification at phone scale.
 
 ## Render comparison
 
