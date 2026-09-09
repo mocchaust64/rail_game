@@ -6,19 +6,89 @@
   "buffer_capacity": 4,
   "buffer_return_delay": 2.9,
   "nodes": [
-    {"id": "S", "pos": [0, -5.4], "type": "source", "next": "J1"},
-    {"id": "J1", "pos": [0, -1.4], "type": "junction", "out_a": "R", "out_b": "J2", "initial_state": 0},
-    {"id": "J2", "pos": [1.3, 0.8], "type": "junction", "out_a": "B", "out_b": "Y", "initial_state": 0},
-    {"id": "R", "pos": [-3.0, 3.7], "type": "receiver", "kind": "red"},
-    {"id": "B", "pos": [0.0, 3.7], "type": "receiver", "kind": "blue"},
-    {"id": "Y", "pos": [3.0, 3.7], "type": "receiver", "kind": "yellow"}
+    {
+      "id": "S",
+      "pos": [
+        0,
+        -5.4
+      ],
+      "type": "source",
+      "next": "J1"
+    },
+    {
+      "id": "J1",
+      "pos": [
+        0,
+        -1.4
+      ],
+      "type": "junction",
+      "out_a": "R",
+      "out_b": "J2",
+      "initial_state": 0
+    },
+    {
+      "id": "J2",
+      "pos": [
+        1.3,
+        0.8
+      ],
+      "type": "junction",
+      "out_a": "B",
+      "out_b": "Y",
+      "initial_state": 0
+    },
+    {
+      "id": "R",
+      "pos": [
+        -2.9,
+        3.8
+      ],
+      "type": "receiver",
+      "kind": "red"
+    },
+    {
+      "id": "B",
+      "pos": [
+        0.7,
+        4.2
+      ],
+      "type": "receiver",
+      "kind": "blue"
+    },
+    {
+      "id": "Y",
+      "pos": [
+        3.2,
+        3.5
+      ],
+      "type": "receiver",
+      "kind": "yellow"
+    }
   ],
   "spawns": [
-    {"kind": "red", "source": "S"},
-    {"kind": "blue", "source": "S"},
-    {"kind": "yellow", "source": "S"},
-    {"kind": "red", "source": "S"},
-    {"kind": "yellow", "source": "S"},
-    {"kind": "blue", "source": "S"}
+    {
+      "kind": "red",
+      "source": "S"
+    },
+    {
+      "kind": "blue",
+      "source": "S"
+    },
+    {
+      "kind": "yellow",
+      "source": "S"
+    },
+    {
+      "kind": "red",
+      "source": "S"
+    },
+    {
+      "kind": "yellow",
+      "source": "S"
+    },
+    {
+      "kind": "blue",
+      "source": "S"
+    }
   ]
 }
