@@ -1,7 +1,10 @@
 class_name JunctionActor
 extends Node3D
 
-const SWITCH_REACH := 0.54
+# The reference rotates a noticeable conveyor section, not a tiny arrow at the
+# centre of a Y. This length leaves enough moving hardware to make the route
+# change readable before a ball reaches it.
+const SWITCH_REACH := 1.50
 
 var junction_id: String = ""
 var out_a: String = ""
@@ -10,9 +13,9 @@ var state: int = 0
 
 var _switch_arm: Node3D
 var _hint_ring: MeshInstance3D
+var _route_halo: MeshInstance3D
 var _pivot: MeshInstance3D
 var _is_animating: bool = false
-var _queued_toggle: bool = false
 var _target_state: int = 0
 var _positions: Dictionary = {}
 var _hint_active: bool = false
@@ -42,8 +45,8 @@ func _process(delta: float) -> void:
 
 
 func current_output() -> String:
-    # Gameplay follows the rail that is physically connected right now. A tap
-    # does not change routing early while the metal arm is still moving.
+    # The route changes only after the long conveyor has physically reached the
+    # new guide rails. Visual connection and gameplay connection are identical.
     return out_a if state == 0 else out_b
 
 
@@ -52,9 +55,10 @@ func selected_state() -> int:
 
 
 func request_toggle() -> void:
+    # Ignore a second event while the rail is moving. Desktop Godot can emit a
+    # touch-emulation event and a mouse event for one click; queueing the second
+    # event was the reason the rail visibly changed and then rotated back.
     if _is_animating:
-        # One extra tap reverses the requested end state after the current move.
-        _queued_toggle = not _queued_toggle
         return
     _perform_toggle(1 - state)
 
@@ -69,26 +73,31 @@ func _perform_toggle(next_state: int) -> void:
     AudioService.play("tap", 1.0, -4.0)
     HapticService.light()
 
+    if _route_halo != null:
+        _route_halo.visible = true
+        _route_halo.scale = Vector3(0.82, 1.0, 0.82)
+        var halo_tween := Motion.tween(_route_halo)
+        halo_tween.tween_property(_route_halo, "scale", Vector3.ONE * 1.06, 0.09)
+        halo_tween.tween_property(_route_halo, "scale", Vector3.ONE, 0.10)
+
     var target_angle := _angle_for_state(_target_state)
     var tween := Motion.tween(self)
-    tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-    tween.tween_property(_switch_arm, "rotation:y", target_angle, 0.14)
-    tween.parallel().tween_property(_switch_arm, "scale", Vector3(1.03, 0.92, 1.03), 0.055)
-    tween.chain().tween_property(_switch_arm, "scale", Vector3.ONE, 0.075)
-    if _pivot != null:
-        var pivot_tween := Motion.tween(_pivot)
-        pivot_tween.tween_property(_pivot, "scale", Vector3(0.94, 0.84, 0.94), 0.055)
-        pivot_tween.tween_property(_pivot, "scale", Vector3.ONE, 0.075)
+    tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+    tween.tween_property(_switch_arm, "rotation:y", target_angle, 0.18)
     tween.finished.connect(_on_toggle_finished)
 
 
 func _on_toggle_finished() -> void:
-    # Route changes only now, when the rail has visibly reached the new branch.
     state = _target_state
     _is_animating = false
-    if _queued_toggle:
-        _queued_toggle = false
-        _perform_toggle(1 - state)
+    if _route_halo != null:
+        var halo_tween := Motion.tween(_route_halo)
+        halo_tween.tween_property(_route_halo, "modulate:a", 0.0, 0.10)
+        halo_tween.finished.connect(func() -> void:
+            if _route_halo != null:
+                _route_halo.visible = false
+                _route_halo.modulate.a = 1.0
+        )
 
 
 func _target_angle() -> float:
@@ -110,8 +119,7 @@ func _angle_for_state(route_state: int) -> float:
     if dir.length_squared() < 0.0001:
         return 0.0
     dir.y = 0.0
-    dir = dir.normalized()
-    return atan2(dir.x, dir.z)
+    return atan2(dir.normalized().x, dir.normalized().z)
 
 
 func _snap_switch() -> void:
@@ -120,17 +128,16 @@ func _snap_switch() -> void:
 
 
 func _build_visual() -> void:
-    # Small mechanical centre only; the moving rail itself communicates routing.
     _pivot = MeshInstance3D.new()
     _pivot.name = "SwitchPivot"
     var pivot_mesh := CylinderMesh.new()
-    pivot_mesh.top_radius = 0.31
-    pivot_mesh.bottom_radius = 0.34
-    pivot_mesh.height = 0.085
+    pivot_mesh.top_radius = 0.22
+    pivot_mesh.bottom_radius = 0.25
+    pivot_mesh.height = 0.06
     pivot_mesh.radial_segments = 20
     _pivot.mesh = pivot_mesh
-    _pivot.position.y = 0.075
-    _pivot.material_override = VisualFactory.material(Color("#56595A"), 0.56, 0.0, 0.10)
+    _pivot.position.y = 0.07
+    _pivot.material_override = VisualFactory.material(Color("#666A6C"), 0.52, 0.0, 0.10)
     add_child(_pivot)
 
     _switch_arm = Node3D.new()
@@ -139,11 +146,26 @@ func _build_visual() -> void:
 
     var local_points := PackedVector3Array([
         Vector3(0.0, 0.0, 0.0),
-        Vector3(0.0, 0.0, 0.18),
-        Vector3(0.0, 0.0, 0.36),
+        Vector3(0.0, 0.0, SWITCH_REACH * 0.34),
+        Vector3(0.0, 0.0, SWITCH_REACH * 0.68),
         Vector3(0.0, 0.0, SWITCH_REACH),
     ])
-    TrackVisuals.create_path(_switch_arm, local_points)
+    TrackVisuals.create_path(_switch_arm, local_points, 0.0, 0.0, true, true)
+
+    # The target video briefly shows a blue selection glow around a rotating
+    # section. It appears only during the change, never as a permanent button.
+    _route_halo = MeshInstance3D.new()
+    _route_halo.name = "RouteChangeHalo"
+    var halo_mesh := TorusMesh.new()
+    halo_mesh.inner_radius = 0.42
+    halo_mesh.outer_radius = 0.53
+    halo_mesh.rings = 24
+    halo_mesh.ring_segments = 10
+    _route_halo.mesh = halo_mesh
+    _route_halo.position.y = 0.09
+    _route_halo.material_override = VisualFactory.material(Color("#76B8F4B0"), 0.24, 0.35)
+    _route_halo.visible = false
+    add_child(_route_halo)
 
     _hint_ring = MeshInstance3D.new()
     var hint_mesh := TorusMesh.new()
@@ -152,7 +174,7 @@ func _build_visual() -> void:
     hint_mesh.rings = 20
     hint_mesh.ring_segments = 8
     _hint_ring.mesh = hint_mesh
-    _hint_ring.position.y = 0.12
+    _hint_ring.position.y = 0.10
     _hint_ring.material_override = VisualFactory.material(Color("#FFF1A8"), 0.32, 0.50)
     _hint_ring.visible = false
     add_child(_hint_ring)
