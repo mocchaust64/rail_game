@@ -1,14 +1,14 @@
 class_name TrackGeometry
 extends RefCounted
-# One deterministic presentation path per graph edge. Rendering and cargo both
-# consume these sampled curves so the ball can never cut across a curved belt.
-# Routing still commits by node id exactly as before.
+# One deterministic presentation path per graph edge. The graph still owns the
+# rules; these denser, longer handles only make the rails read like the smooth
+# toy railway in the reference video.
 
-const HANDLE_FACTOR := 0.30
-const MAX_HANDLE := 1.25
-const SAMPLE_SPACING := 0.30
-const MIN_SAMPLES := 6
-const MAX_SAMPLES := 28
+const HANDLE_FACTOR := 0.40
+const MAX_HANDLE := 1.65
+const SAMPLE_SPACING := 0.22
+const MIN_SAMPLES := 8
+const MAX_SAMPLES := 40
 
 static var _paths: Dictionary = {}
 
@@ -152,9 +152,9 @@ static func _sample_edge(start: Vector3, finish: Vector3, start_tangent: Vector3
         return PackedVector3Array([start, finish])
     var forward := direct / distance
 
-    if start_tangent.dot(forward) < 0.12:
+    if start_tangent.dot(forward) < 0.10:
         start_tangent = forward
-    if end_tangent.dot(forward) < 0.12:
+    if end_tangent.dot(forward) < 0.10:
         end_tangent = forward
 
     var handle := minf(MAX_HANDLE, distance * HANDLE_FACTOR)
