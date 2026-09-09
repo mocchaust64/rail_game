@@ -20,6 +20,19 @@ const KAYKIT_PALLET = preload("res://assets/vendor/kaykit_prototype_bits/Pallet_
 const KAYKIT_BARREL = preload("res://assets/vendor/kaykit_prototype_bits/Barrel_A_CC0_Derived.obj")
 const KAYKIT_LOADED_PALLET = preload("res://assets/vendor/kaykit_prototype_bits/Pallet_Loaded_CC0_Derived.obj")
 
+# CC0 gameplay geometry. These packs ship a single texture atlas each, which is
+# what gives the pieces surface detail the procedural primitives never had.
+# Chosen so each model's own atlas colour already is the gameplay colour. Tinting
+# a coloured texture multiplies, it does not replace: a blue model tinted yellow
+# came out green, which broke the one thing cargo colour has to do.
+const CARGO_MODELS := {
+    "red": "res://assets/vendor/kaykit_prototype_bits/gltf/Barrel_A.gltf",
+    "blue": "res://assets/vendor/kaykit_space_base_bits/gltf/containers_C.gltf",
+    "yellow": "res://assets/vendor/kaykit_prototype_bits/gltf/Coin_A.gltf",
+}
+const RECEIVER_MODEL := "res://assets/vendor/kaykit_space_base_bits/gltf/cargodepot_A.gltf"
+const SOURCE_MODEL := "res://assets/vendor/kaykit_space_base_bits/gltf/basemodule_A.gltf"
+
 static var _material_cache: Dictionary = {}
 
 static func material(color: Color, roughness: float = 0.72, emission: float = 0.0, metallic: float = 0.0) -> StandardMaterial3D:
@@ -36,6 +49,61 @@ static func material(color: Color, roughness: float = 0.72, emission: float = 0.
         mat.emission_energy_multiplier = emission
     _material_cache[key] = mat
     return mat
+
+# The two packs are authored at very different scales, so models are measured
+# and fitted to a target size rather than each one carrying a magic multiplier.
+static func vendor_scene(path: String, target_size: float, tint: Color = Color(0, 0, 0, 0)) -> Node3D:
+    var packed: Resource = load(path)
+    if packed == null or not (packed is PackedScene):
+        push_error("vendor model missing: %s" % path)
+        return Node3D.new()
+    var instance := (packed as PackedScene).instantiate() as Node3D
+    var bounds := _combined_aabb(instance)
+    var largest := maxf(bounds.size.x, maxf(bounds.size.y, bounds.size.z))
+    if largest > 0.0001:
+        instance.scale = Vector3.ONE * (target_size / largest)
+    # Sit the model on the origin plane so callers position by its base.
+    instance.position.y = -bounds.position.y * instance.scale.y
+    if tint.a > 0.0:
+        _tint(instance, tint)
+    return instance
+
+
+static func _combined_aabb(node: Node) -> AABB:
+    var box := AABB()
+    var seeded := false
+    for mesh_node in _mesh_children(node):
+        var local := mesh_node.get_aabb()
+        if not seeded:
+            box = local
+            seeded = true
+        else:
+            box = box.merge(local)
+    return box
+
+
+static func _mesh_children(node: Node) -> Array[MeshInstance3D]:
+    var found: Array[MeshInstance3D] = []
+    if node is MeshInstance3D:
+        found.append(node as MeshInstance3D)
+    for child in node.get_children():
+        found.append_array(_mesh_children(child))
+    return found
+
+
+# Multiplies the pack texture by a colour instead of replacing the material, so
+# the cargo reads in the game's palette while keeping its surface detail.
+static func _tint(node: Node, colour: Color) -> void:
+    for mesh_node in _mesh_children(node):
+        var source := mesh_node.get_active_material(0)
+        var tinted: StandardMaterial3D
+        if source is StandardMaterial3D:
+            tinted = (source as StandardMaterial3D).duplicate() as StandardMaterial3D
+        else:
+            tinted = StandardMaterial3D.new()
+        tinted.albedo_color = colour
+        mesh_node.material_override = tinted
+
 
 static func kind_color(kind: String) -> Color:
     match kind:
@@ -132,46 +200,13 @@ static func create_track(parent: Node3D, from_pos: Vector3, to_pos: Vector3) -> 
 static func create_kind_visual(kind: String, scale_value: float = 0.38) -> Node3D:
     var root := Node3D.new()
     root.name = "CargoVisual_%s" % kind
-    var visual := MeshInstance3D.new()
-    match kind:
-        "red":
-            var sphere := SphereMesh.new()
-            sphere.radius = scale_value
-            sphere.height = scale_value * 2.0
-            sphere.radial_segments = 20
-            sphere.rings = 10
-            visual.mesh = sphere
-        "blue":
-            var cube := BoxMesh.new()
-            cube.size = Vector3.ONE * scale_value * 1.60
-            visual.mesh = cube
-        "yellow":
-            var prism := CylinderMesh.new()
-            prism.radial_segments = 3
-            prism.top_radius = scale_value * 0.98
-            prism.bottom_radius = scale_value * 0.98
-            prism.height = scale_value * 1.62
-            visual.mesh = prism
-        _:
-            var sphere := SphereMesh.new()
-            sphere.radius = scale_value
-            sphere.height = scale_value * 2.0
-            visual.mesh = sphere
-    visual.material_override = material(kind_color(kind), 0.38, 0.04)
-    root.add_child(visual)
-
-    # A tiny white cap gives the procedural pieces a premium toy-like highlight.
-    var highlight := MeshInstance3D.new()
-    var hmesh := SphereMesh.new()
-    hmesh.radius = scale_value * 0.13
-    hmesh.height = scale_value * 0.26
-    hmesh.radial_segments = 12
-    hmesh.rings = 6
-    highlight.mesh = hmesh
-    highlight.material_override = material(Color("#FFFFFF"), 0.30, 0.05)
-    highlight.position = Vector3(-scale_value * 0.20, scale_value * 0.34, -scale_value * 0.16)
-    root.add_child(highlight)
+    var path: String = CARGO_MODELS.get(kind, CARGO_MODELS["red"])
+    # No tint: these models already carry the right colour in the pack atlas.
+    var model := vendor_scene(path, scale_value * 2.1)
+    model.position.y -= scale_value
+    root.add_child(model)
     return root
+
 
 static func create_source_shell(parent: Node3D) -> Node3D:
     var root := Node3D.new()
@@ -184,12 +219,9 @@ static func create_source_shell(parent: Node3D) -> Node3D:
     var ring := _cylinder(0.55, 0.18, GREEN_ACCENT, 0.48, 0.08)
     ring.position.y = 0.25
     root.add_child(ring)
-    var hopper := _cylinder(0.46, 0.52, MACHINE_BODY, 0.76)
-    hopper.position.y = 0.52
+    var hopper := vendor_scene(SOURCE_MODEL, 1.30, MACHINE_BODY)
+    hopper.position.y = 0.16
     root.add_child(hopper)
-    var cap := _cylinder(0.34, 0.10, MACHINE_DARK, 0.75)
-    cap.position.y = 0.82
-    root.add_child(cap)
     return root
 
 static func create_receiver_shell(parent: Node3D, kind: String) -> Dictionary:
@@ -197,6 +229,8 @@ static func create_receiver_shell(parent: Node3D, kind: String) -> Dictionary:
     root.name = "ReceiverShell_%s" % kind
     parent.add_child(root)
 
+    # Deliberately not a CC0 model: the receiver has to read as its cargo colour,
+    # and every candidate carries baked colours of its own that fight that.
     var body := _box(Vector3(1.55, 0.98, 1.55), MACHINE_BODY, 0.76)
     body.position.y = 0.42
     root.add_child(body)

@@ -52,3 +52,29 @@ Kenney remains an approved option if the product survives first-player validatio
 ## Integration rule
 
 Never import a complete pack blindly. Curate a small subset, normalize scale/materials, retain source/license provenance, and preserve Flow Factory's own visual language for anything the player touches or must read quickly.
+
+## v0.3.2 — CC0 gameplay geometry
+
+Gameplay pieces are no longer procedural primitives only. The following models
+ship in the repository and are used for cargo and source machines.
+
+| File | Pack | Author | Licence | Used for |
+|---|---|---|---|---|
+| `kaykit_prototype_bits/gltf/Barrel_A.gltf` | KayKit Prototype Bits 1.0 | Kay Lousberg | CC0 1.0 | red cargo |
+| `kaykit_prototype_bits/gltf/Coin_A.gltf` | KayKit Prototype Bits 1.0 | Kay Lousberg | CC0 1.0 | yellow cargo |
+| `kaykit_space_base_bits/gltf/containers_C.gltf` | KayKit Space Base Bits 1.0 | Kay Lousberg | CC0 1.0 | blue cargo |
+| `kaykit_space_base_bits/gltf/basemodule_A.gltf` | KayKit Space Base Bits 1.0 | Kay Lousberg | CC0 1.0 | source machine |
+| `*_texture.png` | both packs | Kay Lousberg | CC0 1.0 | shared texture atlas per pack |
+
+Source: https://github.com/KayKit-Game-Assets — full pack licences are kept
+alongside the models. CC0 requires no attribution; it is recorded here anyway so
+provenance stays auditable.
+
+### Why receivers are still custom geometry
+
+Each cargo colour has to be unmistakable, and every candidate receiver model
+carries its own baked colours. Tinting multiplies rather than replaces, so a
+blue model tinted yellow renders green. The three cargo models above were picked
+because their own atlas colours already are the gameplay colours, which is why
+they need no tint. No candidate could do the same job for a receiver that must
+be able to read as any of the three, so the receiver body stays procedural.
