@@ -1,10 +1,12 @@
 class_name SourceActor
 extends Node3D
 
+const MAX_VISIBLE_QUEUE := 8
+
 var source_id: String = ""
 var _shell: Node3D
-var _preview_anchor: Node3D
-var _preview_visual: Node3D
+var _preview_layer: Node3D
+var _preview_visuals: Array[Node3D] = []
 var _feeder: Node3D
 var _clock: float = 0.0
 
@@ -12,38 +14,52 @@ var _clock: float = 0.0
 func configure(id_value: String) -> void:
     source_id = id_value
 
-    # The target video begins with open feeder lanes, not a large hopper sitting
-    # on the spawn point. Keep the source physical but let the rails be the hero.
     _shell = Node3D.new()
     _shell.name = "FeederSource"
     add_child(_shell)
     _build_feeder()
 
-    _preview_anchor = Node3D.new()
-    _preview_anchor.name = "NextCargoPreview"
-    _preview_anchor.position = Vector3(0, 0.47, -0.56)
-    add_child(_preview_anchor)
+    _preview_layer = Node3D.new()
+    _preview_layer.name = "UpcomingCargoOnRails"
+    add_child(_preview_layer)
 
 
 func set_preview(kind: String) -> void:
-    if _preview_anchor == null:
+    var kinds: Array = []
+    if not kind.is_empty():
+        kinds.append(kind)
+    set_preview_queue(kinds)
+
+
+func set_preview_queue(kinds: Array) -> void:
+    if _preview_layer == null:
         return
-    if _preview_visual != null and is_instance_valid(_preview_visual):
-        _preview_anchor.remove_child(_preview_visual)
-        _preview_visual.queue_free()
-        _preview_visual = null
-    if kind.is_empty():
-        return
-    _preview_visual = VisualFactory.create_kind_visual(kind, 0.28)
-    _preview_anchor.add_child(_preview_visual)
+    for visual in _preview_visuals:
+        if visual != null and is_instance_valid(visual):
+            visual.queue_free()
+    _preview_visuals.clear()
+
+    var lane_offsets := [-1.52, -0.76, 0.0, 0.76, 1.52]
+    var visible_count := mini(MAX_VISIBLE_QUEUE, kinds.size())
+    for i in range(visible_count):
+        var lane_index := i % lane_offsets.size()
+        var row := i / lane_offsets.size()
+        var visual := VisualFactory.create_kind_visual(String(kinds[i]), 0.27)
+        visual.position = Vector3(
+            float(lane_offsets[lane_index]),
+            0.47,
+            -0.52 - float(row) * 0.62
+        )
+        _preview_layer.add_child(visual)
+        _preview_visuals.append(visual)
 
 
 func _process(delta: float) -> void:
     _clock += delta
-    if _preview_anchor != null:
-        # Balls rest on the feeder. A tiny turn keeps the toy alive without the
-        # floating/bobbing motion that made the old source look synthetic.
-        _preview_anchor.rotation.y = sin(_clock * 1.2) * 0.025
+    if _preview_layer != null:
+        # Keep queued cargo physically planted. Only a barely visible turn stops
+        # the bank feeling frozen while avoiding the old floating-preview look.
+        _preview_layer.rotation.y = sin(_clock * 1.1) * 0.006
 
 
 func react_launch() -> void:
@@ -101,8 +117,6 @@ func _build_feeder() -> void:
             sleeper.material_override = VisualFactory.material(Color("#737576"), 0.54, 0.0, 0.08)
             lane_root.add_child(sleeper)
 
-    # A shallow guide at the lane mouths visually groups the five feeders before
-    # they enter the main network, matching the reference silhouette.
     var mouth_bar := MeshInstance3D.new()
     var mouth_mesh := BoxMesh.new()
     mouth_mesh.size = Vector3(3.62, 0.08, 0.18)
