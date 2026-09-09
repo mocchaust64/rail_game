@@ -12,15 +12,11 @@ var _clock: float = 0.0
 
 func configure(id_value: String) -> void:
     source_id = id_value
-    _shell = VisualFactory.create_source_shell(self)
-    if _shell.get_child_count() > 1:
-        _ring = _shell.get_child(1) as MeshInstance3D
+    _shell = MachineVisuals.create_source_shell(self)
+    _ring = _shell.get_node_or_null("LaunchRing") as MeshInstance3D
 
     _build_feeder()
 
-    # The next piece now sits physically in the first feeder slot instead of
-    # hovering over the machine. Empty slots behind it imply a real queue like
-    # the reference without changing the spawn data contract.
     _preview_anchor = Node3D.new()
     _preview_anchor.name = "NextCargoPreview"
     _preview_anchor.position = Vector3(0, 0.53, -0.62)
@@ -46,8 +42,6 @@ func _process(delta: float) -> void:
         var pulse := 1.0 + sin(_clock * 2.4) * 0.025
         _ring.scale = Vector3(pulse, 1.0, pulse)
     if _preview_anchor != null:
-        # A queued ball rests on the lane. Only a tiny idle roll keeps the toy
-        # alive; no vertical bobbing/levitation.
         _preview_anchor.rotation.y = sin(_clock * 1.25) * 0.035
 
 
@@ -90,8 +84,6 @@ func _build_feeder() -> void:
         rail.material_override = VisualFactory.material(VisualFactory.RAIL_COLOR, 0.30, 0.0, 0.18)
         _feeder.add_child(rail)
 
-    # Three recessed queue marks: first is occupied by the real preview actor,
-    # two behind it stay empty until the level design exposes deeper previews.
     for z in [-0.62, -1.13, -1.64]:
         var slot := MeshInstance3D.new()
         var slot_mesh := CylinderMesh.new()
