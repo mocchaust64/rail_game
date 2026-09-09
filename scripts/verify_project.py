@@ -23,6 +23,7 @@ def check_required_files() -> None:
         "gameplay/item_actor.gd", "gameplay/junction_actor.gd",
         "gameplay/receiver_actor.gd", "gameplay/source_actor.gd",
         "gameplay/visual_factory.gd", "gameplay/level_validator.gd",
+        "gameplay/track_geometry.gd", "gameplay/track_visuals.gd",
         "ui/hud.gd", "ui/cargo_icon.gd",
         "services/save_service.gd", "services/audio_service.gd",
         "services/haptic_service.gd", "services/analytics_service.gd",
@@ -45,6 +46,7 @@ def check_required_files() -> None:
         "assets/vendor/kaykit_prototype_bits/Pallet_Loaded_CC0_Derived.obj",
         "assets/vendor/kaykit_prototype_bits/LICENSE.txt",
         "assets/vendor/kaykit_prototype_bits/SOURCE.md",
+        "tests/track_geometry_check.gd", "tests/track_geometry_check.tscn",
     ]
     for rel in required:
         if not (ROOT / rel).exists():
@@ -141,7 +143,6 @@ def check_levels() -> None:
                 fail(f"{path.name}: {kind} from {source} cannot reach matching receiver")
 
 
-
 def check_vendor_assets() -> None:
     vendor = ROOT / "assets" / "vendor" / "kaykit_prototype_bits"
     minimums = {
@@ -170,6 +171,7 @@ def check_vendor_assets() -> None:
     if "github.com/KayKit-Game-Assets/KayKit-Prototype-Bits-1.0" not in source_text:
         fail("vendor source manifest missing upstream repository")
 
+
 def check_audio() -> None:
     names = ["tap", "ui", "spawn", "correct", "wrong", "buffer_return", "win", "fail", "ambient"]
     for name in names:
@@ -196,6 +198,7 @@ def main() -> int:
     print(" - every spawn kind can reach a matching receiver")
     print(" - bundled audio present")
     print(" - CC0 vendor geometry + provenance present")
+    print(" - curved track renderer/geometry contract files present")
     return 0
 
 if __name__ == "__main__":
