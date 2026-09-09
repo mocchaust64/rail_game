@@ -155,12 +155,15 @@ func _build() -> void:
     root.name = "HudRoot"
     root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
     root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+    root.theme = _build_theme()
     add_child(root)
+
+    var insets := _safe_area_insets()
 
     var top := MarginContainer.new()
     top.set_anchors_preset(Control.PRESET_TOP_WIDE)
     top.add_theme_constant_override("margin_left", 36)
-    top.add_theme_constant_override("margin_top", 34)
+    top.add_theme_constant_override("margin_top", 34 + int(insets.x))
     top.add_theme_constant_override("margin_right", 36)
     root.add_child(top)
 
@@ -202,9 +205,9 @@ func _build() -> void:
 
     var upcoming := PanelContainer.new()
     upcoming.set_anchors_preset(Control.PRESET_CENTER_TOP)
-    upcoming.position = Vector2(-236, 108)
+    upcoming.position = Vector2(-236, 108 + insets.x)
     upcoming.size = Vector2(472, 104)
-    upcoming.add_theme_stylebox_override("panel", _panel_style(Color("#F7FAFCEB"), 24, Color(0, 0, 0, 0.08), 9))
+    upcoming.add_theme_stylebox_override("panel", _panel_style(Color("#FBFDFEF7"), 24, Color(0, 0, 0, 0.20), 14))
     root.add_child(upcoming)
 
     var upcoming_row := HBoxContainer.new()
@@ -215,7 +218,7 @@ func _build() -> void:
     var next_label := Label.new()
     next_label.text = "NEXT"
     next_label.add_theme_font_size_override("font_size", 17)
-    next_label.add_theme_color_override("font_color", Color("#677B8C"))
+    next_label.add_theme_color_override("font_color", Color("#46596A"))
     upcoming_row.add_child(next_label)
 
     for i in range(4):
@@ -226,7 +229,7 @@ func _build() -> void:
 
     _tutorial = PanelContainer.new()
     _tutorial.set_anchors_preset(Control.PRESET_CENTER_TOP)
-    _tutorial.position = Vector2(-210, 235)
+    _tutorial.position = Vector2(-210, 235 + insets.x)
     _tutorial.size = Vector2(420, 64)
     _tutorial.add_theme_stylebox_override("panel", _panel_style(Color("#203044E8"), 22, Color(0, 0, 0, 0.12), 8))
     root.add_child(_tutorial)
@@ -241,15 +244,15 @@ func _build() -> void:
 
     var buffer_margin := MarginContainer.new()
     buffer_margin.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-    buffer_margin.offset_top = -184
-    buffer_margin.offset_bottom = -30
+    buffer_margin.offset_top = -184 - insets.y
+    buffer_margin.offset_bottom = -30 - insets.y
     buffer_margin.add_theme_constant_override("margin_left", 38)
     buffer_margin.add_theme_constant_override("margin_right", 38)
     root.add_child(buffer_margin)
 
     _buffer_panel = PanelContainer.new()
     _buffer_panel.pivot_offset = Vector2(500, 76)
-    _buffer_panel.add_theme_stylebox_override("panel", _panel_style(Color("#EEF4F7EC"), 25, Color(0, 0, 0, 0.11), 10))
+    _buffer_panel.add_theme_stylebox_override("panel", _panel_style(Color("#F4F8FAF7"), 25, Color(0, 0, 0, 0.22), 15))
     buffer_margin.add_child(_buffer_panel)
 
     var buffer_v := VBoxContainer.new()
@@ -260,7 +263,7 @@ func _build() -> void:
     buffer_title.text = "WAITING BUFFER"
     buffer_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     buffer_title.add_theme_font_size_override("font_size", 18)
-    buffer_title.add_theme_color_override("font_color", Color("#53687A"))
+    buffer_title.add_theme_color_override("font_color", Color("#3D4F5E"))
     buffer_v.add_child(buffer_title)
 
     _buffer_row = HBoxContainer.new()
@@ -283,7 +286,7 @@ func _build() -> void:
     _overlay.size = Vector2(744, 580)
     _overlay.pivot_offset = Vector2(372, 290)
     _overlay.mouse_filter = Control.MOUSE_FILTER_STOP
-    _overlay.add_theme_stylebox_override("panel", _panel_style(Color("#F9FBFCFC"), 36, Color(0, 0, 0, 0.21), 24))
+    _overlay.add_theme_stylebox_override("panel", _panel_style(Color("#F9FBFCFC"), 36, Color(0, 0, 0, 0.34), 30))
     root.add_child(_overlay)
 
     var overlay_margin := MarginContainer.new()
@@ -421,8 +424,43 @@ func _panel_style(bg: Color, radius: int, shadow: Color, shadow_size: int) -> St
     style.corner_radius_bottom_right = radius
     style.shadow_color = shadow
     style.shadow_size = shadow_size
+    # Light panels on a light 3D scene separate by elevation, not by fill.
+    style.shadow_offset = Vector2(0, 5)
     style.content_margin_left = 16
     style.content_margin_right = 16
     style.content_margin_top = 12
     style.content_margin_bottom = 12
     return style
+
+
+# The project ships no font asset, so every label would otherwise render in
+# Godot's built-in default face. A SystemFont costs no files and resolves to the
+# platform UI face: Roboto on Android, San Francisco on macOS and iOS.
+func _build_theme() -> Theme:
+    var font := SystemFont.new()
+    font.font_names = PackedStringArray([
+        "SF Pro Rounded", "SF Pro Text", "Helvetica Neue",
+        "Roboto", "Noto Sans", "Segoe UI", "sans-serif",
+    ])
+    font.font_weight = 600
+    font.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_AUTO
+    var theme := Theme.new()
+    theme.default_font = font
+    return theme
+
+
+# Top and bottom insets in viewport units, so the HUD clears a notch or a status
+# bar. get_display_safe_area() reports screen coordinates, so it is converted to
+# window-relative first: on a windowed desktop the safe area starts below the
+# menu bar, which is not an inset for the window and must not be treated as one.
+func _safe_area_insets() -> Vector2:
+    var safe := DisplayServer.get_display_safe_area()
+    var window_size := DisplayServer.window_get_size()
+    if window_size.y <= 0 or safe.size.y <= 0:
+        return Vector2.ZERO
+    var window_top := DisplayServer.window_get_position().y
+    var window_bottom := window_top + window_size.y
+    var scale := get_viewport().get_visible_rect().size.y / float(window_size.y)
+    var top := maxf(0.0, float(safe.position.y - window_top)) * scale
+    var bottom := maxf(0.0, float(window_bottom - (safe.position.y + safe.size.y))) * scale
+    return Vector2(top, bottom)
