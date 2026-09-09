@@ -1,0 +1,127 @@
+{
+  "id": 10,
+  "title": "FLOW TEST",
+  "item_speed": 1.65,
+  "spawn_interval": 1.25,
+  "buffer_capacity": 4,
+  "buffer_return_delay": 2.7,
+  "nodes": [
+    {
+      "id": "S1",
+      "pos": [
+        -2.5,
+        -5.6
+      ],
+      "type": "source",
+      "next": "J1"
+    },
+    {
+      "id": "S2",
+      "pos": [
+        2.5,
+        -5.6
+      ],
+      "type": "source",
+      "next": "J2"
+    },
+    {
+      "id": "J1",
+      "pos": [
+        -1.8,
+        -1.2
+      ],
+      "type": "junction",
+      "out_a": "R",
+      "out_b": "B",
+      "initial_state": 0
+    },
+    {
+      "id": "J2",
+      "pos": [
+        1.8,
+        -1.2
+      ],
+      "type": "junction",
+      "out_a": "B",
+      "out_b": "Y",
+      "initial_state": 0
+    },
+    {
+      "id": "R",
+      "pos": [
+        -3.2,
+        3.7
+      ],
+      "type": "receiver",
+      "kind": "red"
+    },
+    {
+      "id": "B",
+      "pos": [
+        0,
+        4.4
+      ],
+      "type": "receiver",
+      "kind": "blue"
+    },
+    {
+      "id": "Y",
+      "pos": [
+        3.2,
+        3.7
+      ],
+      "type": "receiver",
+      "kind": "yellow"
+    }
+  ],
+  "spawns": [
+    {
+      "kind": "red",
+      "source": "S1"
+    },
+    {
+      "kind": "blue",
+      "source": "S2"
+    },
+    {
+      "kind": "blue",
+      "source": "S1"
+    },
+    {
+      "kind": "yellow",
+      "source": "S2"
+    },
+    {
+      "kind": "red",
+      "source": "S1"
+    },
+    {
+      "kind": "blue",
+      "source": "S2"
+    },
+    {
+      "kind": "blue",
+      "source": "S1"
+    },
+    {
+      "kind": "yellow",
+      "source": "S2"
+    },
+    {
+      "kind": "red",
+      "source": "S1"
+    },
+    {
+      "kind": "yellow",
+      "source": "S2"
+    },
+    {
+      "kind": "blue",
+      "source": "S1"
+    },
+    {
+      "kind": "blue",
+      "source": "S2"
+    }
+  ]
+}

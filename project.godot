@@ -1,0 +1,51 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="Flow Factory"
+config/description="A tactile routing puzzle MVP for mobile."
+config/version="0.3.0-mvp"
+run/main_scene="res://app/main.tscn"
+config/features=PackedStringArray("4.7", "GL Compatibility")
+boot_splash/bg_color=Color(0.741176, 0.815686, 0.85098, 1)
+boot_splash/image="res://assets/branding/splash.png"
+config/icon="res://assets/branding/icon.png"
+
+[autoload]
+
+SaveService="*res://services/save_service.gd"
+AudioService="*res://services/audio_service.gd"
+HapticService="*res://services/haptic_service.gd"
+AnalyticsService="*res://services/analytics_service.gd"
+
+[display]
+
+window/size/viewport_width=1080
+window/size/viewport_height=1920
+window/size/window_width_override=540
+window/size/window_height_override=960
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=1
+
+[dotnet]
+
+project/assembly_name="Flow Factory"
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=true
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+anti_aliasing/quality/msaa_3d=1

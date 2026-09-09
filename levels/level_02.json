@@ -1,0 +1,78 @@
+{
+  "id": 2,
+  "title": "KEEP THE RHYTHM",
+  "item_speed": 1.7,
+  "spawn_interval": 1.8,
+  "buffer_capacity": 4,
+  "buffer_return_delay": 2.7,
+  "nodes": [
+    {
+      "id": "S",
+      "pos": [
+        0,
+        -5.2
+      ],
+      "type": "source",
+      "next": "J1"
+    },
+    {
+      "id": "J1",
+      "pos": [
+        0,
+        -0.7
+      ],
+      "type": "junction",
+      "out_a": "R",
+      "out_b": "B",
+      "initial_state": 1
+    },
+    {
+      "id": "R",
+      "pos": [
+        -2.7,
+        3.7
+      ],
+      "type": "receiver",
+      "kind": "red"
+    },
+    {
+      "id": "B",
+      "pos": [
+        2.7,
+        3.7
+      ],
+      "type": "receiver",
+      "kind": "blue"
+    }
+  ],
+  "spawns": [
+    {
+      "kind": "blue",
+      "source": "S"
+    },
+    {
+      "kind": "blue",
+      "source": "S"
+    },
+    {
+      "kind": "red",
+      "source": "S"
+    },
+    {
+      "kind": "blue",
+      "source": "S"
+    },
+    {
+      "kind": "red",
+      "source": "S"
+    },
+    {
+      "kind": "red",
+      "source": "S"
+    },
+    {
+      "kind": "blue",
+      "source": "S"
+    }
+  ]
+}
