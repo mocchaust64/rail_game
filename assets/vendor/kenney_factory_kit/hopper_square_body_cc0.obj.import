@@ -1,0 +1,25 @@
+[remap]
+
+importer="wavefront_obj"
+importer_version=1
+type="Mesh"
+uid="uid://bw21pvhicf74d"
+path="res://.godot/imported/hopper_square_body_cc0.obj-97d3894b3da9918ad20087bab0921b7b.mesh"
+
+[deps]
+
+files=["res://.godot/imported/hopper_square_body_cc0.obj-97d3894b3da9918ad20087bab0921b7b.mesh"]
+
+source_file="res://assets/vendor/kenney_factory_kit/hopper_square_body_cc0.obj"
+dest_files=["res://.godot/imported/hopper_square_body_cc0.obj-97d3894b3da9918ad20087bab0921b7b.mesh", "res://.godot/imported/hopper_square_body_cc0.obj-97d3894b3da9918ad20087bab0921b7b.mesh"]
+
+[params]
+
+generate_tangents=true
+generate_lods=true
+generate_shadow_mesh=true
+generate_lightmap_uv2=false
+generate_lightmap_uv2_texel_size=0.2
+scale_mesh=Vector3(1, 1, 1)
+offset_mesh=Vector3(0, 0, 0)
+force_disable_mesh_compression=false
