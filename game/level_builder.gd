@@ -1,11 +1,12 @@
 class_name LevelBuilder
 extends RefCounted
-# Turns level data into world nodes. Gameplay topology stays in JSON; presentation
-# paths are rebuilt from that topology so visuals can curve without changing rules.
+# Builds the gameplay graph and its presentation. Level 3 now doubles as the
+# reference-composition scene, so normal graph nodes may opt into visual-only
+# processor shells without changing routing rules.
 
 const LEVEL_PATH := "res://levels/level_%02d.json"
 const BLOCKING_TYPES := ["receiver", "source"]
-const JUNCTION_VISUAL_GAP := 0.52
+const JUNCTION_VISUAL_GAP := 0.54
 
 
 static func load_data(level_number: int) -> Dictionary:
@@ -40,7 +41,7 @@ static func build(level: Dictionary, world: Node3D, pool_size: int) -> Dictionar
         nodes_by_id[id] = node
         var p: Array = node["pos"]
         positions[id] = Vector3(float(p[0]), 0.0, float(p[1]))
-        if String(node.get("type", "normal")) in BLOCKING_TYPES:
+        if String(node.get("type", "normal")) in BLOCKING_TYPES or not String(node.get("visual", "")).is_empty():
             occupied.append(Vector2(float(p[0]), float(p[1])))
 
     TrackGeometry.rebuild(nodes_by_id, positions)
@@ -50,8 +51,7 @@ static func build(level: Dictionary, world: Node3D, pool_size: int) -> Dictionar
         (rig_parent as SceneRig).frame_positions(positions)
 
     var item_pool := ItemPool.new(world, pool_size)
-    var floor_root := VisualFactory.create_floor(world, occupied)
-    _make_floor_full_bleed(floor_root)
+    VisualFactory.create_floor(world, occupied)
     var buffer_chute := VisualFactory.create_buffer_chute(world)
 
     _draw_tracks(nodes_by_id, positions, world)
@@ -80,6 +80,10 @@ static func build(level: Dictionary, world: Node3D, pool_size: int) -> Dictionar
                 world.add_child(junction)
                 junction.configure(node, positions)
                 junctions[id] = junction
+            "normal":
+                if String(node.get("visual", "")) == "processor":
+                    var processor := MachineVisuals.create_processor_shell(world)
+                    processor.position = positions[id]
 
     return {
         "nodes_by_id": nodes_by_id,
@@ -90,20 +94,6 @@ static func build(level: Dictionary, world: Node3D, pool_size: int) -> Dictionar
         "buffer_chute": buffer_chute,
         "item_pool": item_pool,
     }
-
-
-static func _make_floor_full_bleed(floor_root: Node3D) -> void:
-    # VisualFactory keeps the old floor structure because older checks depend on
-    # its decor group. Hide only the lighter inset and enlarge the warm ground,
-    # removing the obvious rectangular "board on a background" read.
-    if floor_root.get_child_count() > 0:
-        var ground := floor_root.get_child(0) as MeshInstance3D
-        if ground != null and ground.mesh is BoxMesh:
-            (ground.mesh as BoxMesh).size = Vector3(16.0, 0.22, 22.0)
-    if floor_root.get_child_count() > 1:
-        var inset := floor_root.get_child(1) as Node3D
-        if inset != null:
-            inset.visible = false
 
 
 static func _draw_tracks(nodes_by_id: Dictionary, positions: Dictionary, world: Node3D) -> void:
@@ -123,7 +113,6 @@ static func _draw_tracks(nodes_by_id: Dictionary, positions: Dictionary, world: 
             var start: Vector3 = positions[id]
             var finish: Vector3 = positions[target]
             var points := TrackGeometry.path_for(id, target, start, finish)
-
             var start_trim := JUNCTION_VISUAL_GAP if String(node.get("type", "normal")) == "junction" else 0.0
             TrackVisuals.create_path(world, points, start_trim, 0.0)
             drawn[key] = true
