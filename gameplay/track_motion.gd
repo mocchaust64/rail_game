@@ -1,10 +1,10 @@
 class_name TrackMotion
 extends Node3D
-# Lightweight motion layer for the reference rails. The side rails remain fixed
-# while small belt ribs continuously travel down the dark centre channel.
+# Subtle moving panel seams on the dark conveyor. The reference belt moves, but
+# its motion is dark-on-dark rather than bright railroad sleepers sliding along.
 
-const FLOW_SPEED := 0.82
-const FLOW_SPACING := 0.38
+const FLOW_SPEED := 0.72
+const FLOW_SPACING := 0.34
 
 var _points := PackedVector3Array()
 var _path_length := 0.0
@@ -21,7 +21,7 @@ func setup(points: PackedVector3Array) -> void:
     var count := maxi(2, int(ceil(_path_length / FLOW_SPACING)))
     var mesh := BoxMesh.new()
     mesh.size = Vector3.ONE
-    mesh.material = VisualFactory.material(Color("#8A8985"), 0.50, 0.0, 0.06)
+    mesh.material = VisualFactory.material(Color("#45484C"), 0.68)
 
     _multi = MultiMesh.new()
     _multi.transform_format = MultiMesh.TRANSFORM_3D
@@ -29,7 +29,7 @@ func setup(points: PackedVector3Array) -> void:
     _multi.instance_count = count
 
     var instance := MultiMeshInstance3D.new()
-    instance.name = "MovingBeltRibs"
+    instance.name = "MovingBeltSeams"
     instance.multimesh = _multi
     add_child(instance)
     _update_transforms()
@@ -50,5 +50,5 @@ func _update_transforms() -> void:
         var p: Vector3 = sample["position"]
         var tangent: Vector3 = sample["tangent"]
         var angle := atan2(tangent.x, tangent.z)
-        var basis := Basis(Vector3.UP, angle).scaled(Vector3(0.52, 0.022, 0.055))
-        _multi.set_instance_transform(i, Transform3D(basis, p + Vector3(0, 0.158, 0)))
+        var basis := Basis(Vector3.UP, angle).scaled(Vector3(0.56, 0.010, 0.028))
+        _multi.set_instance_transform(i, Transform3D(basis, p + Vector3(0, 0.162, 0)))
