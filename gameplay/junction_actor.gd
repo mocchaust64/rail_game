@@ -13,6 +13,7 @@ var _hint_ring: MeshInstance3D
 var _route_halo: MeshInstance3D
 var _pivot: MeshInstance3D
 var _is_animating: bool = false
+var _route_locked: bool = false
 var _target_state: int = 0
 var _positions: Dictionary = {}
 var _hint_active: bool = false
@@ -53,13 +54,22 @@ func is_switching() -> bool:
     return _is_animating
 
 
-func request_toggle() -> void:
-    # One physical click must equal one route change. On desktop a single click
-    # can arrive as both touch-emulation and mouse input, so never queue a second
-    # toggle while the conveyor is already moving.
-    if _is_animating:
-        return
+func is_route_locked() -> bool:
+    return _route_locked
+
+
+func set_route_locked(value: bool) -> void:
+    _route_locked = value
+
+
+func request_toggle() -> bool:
+    # The player must choose before cargo enters the decision zone. Once a ball
+    # is close to/on the moving bridge, the mechanism is physically unavailable.
+    # This removes last-frame colour reaction and turns the route into a plan.
+    if _is_animating or _route_locked:
+        return false
     _perform_toggle(1 - state)
+    return true
 
 
 func set_hint_active(value: bool) -> void:
@@ -76,13 +86,13 @@ func _perform_toggle(next_state: int) -> void:
         _route_halo.visible = true
         _route_halo.scale = Vector3(0.82, 1.0, 0.82)
         var halo_tween := Motion.tween(_route_halo)
-        halo_tween.tween_property(_route_halo, "scale", Vector3.ONE * 1.06, 0.09)
-        halo_tween.tween_property(_route_halo, "scale", Vector3.ONE, 0.09)
+        halo_tween.tween_property(_route_halo, "scale", Vector3.ONE * 1.06, 0.11)
+        halo_tween.tween_property(_route_halo, "scale", Vector3.ONE, 0.11)
 
     var target_angle := _angle_for_state(_target_state)
     var tween := Motion.tween(self)
     tween.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
-    tween.tween_property(_switch_arm, "rotation:y", target_angle, 0.18)
+    tween.tween_property(_switch_arm, "rotation:y", target_angle, 0.24)
     tween.finished.connect(_on_toggle_finished)
 
 
