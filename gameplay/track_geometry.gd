@@ -20,8 +20,9 @@ static func rebuild(nodes_by_id: Dictionary, positions: Dictionary) -> void:
 
     for raw_id in nodes_by_id:
         var id := String(raw_id)
+        var node: Dictionary = nodes_by_id[id]
         incoming[id] = []
-        outgoing[id] = _targets(nodes_by_id[id] as Dictionary)
+        outgoing[id] = _targets(node)
 
     for raw_id in nodes_by_id:
         var id := String(raw_id)
@@ -29,17 +30,16 @@ static func rebuild(nodes_by_id: Dictionary, positions: Dictionary) -> void:
         for raw_target in targets:
             var target := String(raw_target)
             if incoming.has(target):
-                (incoming[target] as Array).append(id)
+                var predecessors: Array = incoming[target]
+                predecessors.append(id)
+                incoming[target] = predecessors
 
     var tangents: Dictionary = {}
     for raw_id in nodes_by_id:
         var id := String(raw_id)
-        tangents[id] = _node_tangent(
-            id,
-            incoming.get(id, []) as Array,
-            outgoing.get(id, []) as Array,
-            positions
-        )
+        var incoming_ids: Array = incoming.get(id, [])
+        var outgoing_ids: Array = outgoing.get(id, [])
+        tangents[id] = _node_tangent(id, incoming_ids, outgoing_ids, positions)
 
     for raw_id in nodes_by_id:
         var id := String(raw_id)
@@ -50,8 +50,9 @@ static func rebuild(nodes_by_id: Dictionary, positions: Dictionary) -> void:
                 continue
             var start: Vector3 = positions[id]
             var finish: Vector3 = positions[target]
-            var start_tangent: Vector3 = tangents.get(id, (finish - start).normalized())
-            var end_tangent: Vector3 = tangents.get(target, (finish - start).normalized())
+            var fallback := (finish - start).normalized()
+            var start_tangent: Vector3 = tangents.get(id, fallback)
+            var end_tangent: Vector3 = tangents.get(target, fallback)
             _paths[_edge_key(id, target)] = _sample_edge(start, finish, start_tangent, end_tangent)
 
 
@@ -62,7 +63,8 @@ static func clear() -> void:
 static func path_for(from_id: String, to_id: String, fallback_start: Vector3, fallback_end: Vector3) -> PackedVector3Array:
     var key := _edge_key(from_id, to_id)
     if _paths.has(key):
-        return _paths[key] as PackedVector3Array
+        var stored: PackedVector3Array = _paths[key]
+        return stored
     return PackedVector3Array([fallback_start, fallback_end])
 
 
@@ -120,12 +122,14 @@ static func _node_tangent(id: String, incoming_ids: Array, outgoing_ids: Array, 
     for raw_prev in incoming_ids:
         var prev := String(raw_prev)
         if positions.has(prev):
-            incoming_forward += (p - (positions[prev] as Vector3)).normalized()
+            var prev_pos: Vector3 = positions[prev]
+            incoming_forward += (p - prev_pos).normalized()
 
     for raw_next in outgoing_ids:
         var next_id := String(raw_next)
         if positions.has(next_id):
-            outgoing_forward += ((positions[next_id] as Vector3) - p).normalized()
+            var next_pos: Vector3 = positions[next_id]
+            outgoing_forward += (next_pos - p).normalized()
 
     if incoming_forward.length_squared() > 0.0001:
         incoming_forward = incoming_forward.normalized()
@@ -148,8 +152,6 @@ static func _sample_edge(start: Vector3, finish: Vector3, start_tangent: Vector3
         return PackedVector3Array([start, finish])
     var forward := direct / distance
 
-    # A tangent that points backwards creates loops. Fall back to the edge's
-    # direct heading for that endpoint instead of trying to be clever.
     if start_tangent.dot(forward) < 0.12:
         start_tangent = forward
     if end_tangent.dot(forward) < 0.12:
