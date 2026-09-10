@@ -1,47 +1,58 @@
-# Flow Factory MVP — v0.3.0
+# Flow Factory — Sorter Economy Vertical Slice
 
-A self-contained, portrait mobile routing puzzle MVP for **Godot 4.7.2 stable**.
+A portrait mobile routing puzzle built with **Godot 4.7.2 stable**.
 
-## What you can test immediately
-
-- 10 handcrafted levels
-- 3 cargo types identified by **color + shape**
-- automatic cargo movement on deterministic routes
-- tap-only two-way junction switching
-- committed routing: cargo already entering a branch never changes direction mid-segment
-- one-deep queued tap while a switch is animating
-- limited waiting buffer, recoverable mistakes, and buffer-overflow failure
-- buffered cargo returns to its original source so close saves are possible
-- global NEXT queue plus a physical next-cargo preview above each source
-- first-level no-text tutorial cue
-- pause / resume / restart / next level
-- local progression save, sound and haptic settings
-- local analytics log abstraction
-- original bundled SFX + ambience
-- original icon + splash screen
-- **bundled CC0 low-poly environment geometry** from audited KayKit Prototype Bits source derivatives
-- custom Clean Toy Factory materials, gameplay models, effects and UI
-- no external runtime asset downloads or plugins required
-
-## Art strategy
-
-The environment now mixes curated CC0 geometry (pallets/barrels/cargo dressing) with original Flow Factory gameplay art. Imported geometry is recolored with the same project materials so the scene feels like one product instead of several unrelated asset packs.
-
-Gameplay-critical assets remain custom: cargo, junctions, receivers, source machines, buffer and feedback. See `docs/THIRD_PARTY_ASSETS.md` for per-source provenance and license details, and `docs/vendor_asset_preview.png` for the bundled CC0 geometry preview.
+This branch is intentionally a small, polished vertical slice. It proves the new core loop before the campaign is expanded.
 
 ## Core loop
 
-Cargo moves automatically. Tap a glowing junction to choose which branch the next cargo takes. Match each shape/color to its receiver. Wrong cargo enters the waiting buffer and returns after a short delay. If another wrong cargo arrives while the buffer is full, the level fails.
+1. **READ** the cargo colours, machines, guide rails and build foundations.
+2. **BUILD** a sorter by spending gold.
+3. **CONFIGURE** red, blue and yellow across the sorter's three exits.
+4. **OPTIMIZE** the network instead of building every available site.
+5. Press **RUN**. Setup locks and cargo moves automatically.
+6. Win by routing every cargo to the matching machine; stars reward lower spend.
 
-## Run in Godot
+The game is designed to reward planning, not reaction speed.
 
-1. Install **Godot 4.7.2 stable**.
-2. Open/import `project.godot` from this folder.
-3. Press **F6/F5 / Run Project**.
-4. Desktop mouse clicks emulate mobile touch.
-5. Pause the game in a debug build to reveal **DEBUG PREV/NEXT LEVEL** buttons for fast testing.
+## Current vertical slice
 
-For stricter verification, run:
+- **Level 1 — BUILD ONE SORTER:** teaches construction only; the initial lane mapping is already correct.
+- **Level 2 — MATCH THE COLORS:** teaches three-lane colour configuration.
+- **Level 3 — SPEND SMART:** introduces unnecessary foundations and asks the player to find the cheapest valid network.
+
+`python3 scripts/verify_project.py` exhaustively checks the build/configuration search space for Levels 1–3 and verifies the declared optimal cost.
+
+## Browser preview — no local Godot install
+
+The recommended tester workflow is the GitHub Pages preview.
+
+Every push to `gameplay/sorter-economy-vertical-slice` runs `.github/workflows/web-preview.yml`, which:
+
+1. runs the source-level solver/validator;
+2. downloads the pinned official Godot 4.7.2 editor and export templates on the GitHub runner;
+3. verifies their SHA-256 checksums;
+4. runs the Godot headless test suite;
+5. exports the `Web Preview` preset;
+6. validates the generated HTML/JS/WASM/PCK bundle;
+7. uploads a downloadable build artifact;
+8. deploys the same build to GitHub Pages.
+
+The Web preset deliberately disables browser threading so the preview works on normal GitHub Pages without special COOP/COEP response headers. The custom HTML shell keeps the game in a centered **9:16 portrait stage** on desktop and mobile browsers.
+
+### One-time GitHub Pages setting
+
+If Pages has never been enabled for the repository:
+
+`Repository Settings → Pages → Build and deployment → Source → GitHub Actions`
+
+After that, future pushes redeploy automatically. No Godot installation is required on the tester's computer.
+
+See `docs/WEB_PREVIEW.md` for troubleshooting and deployment details.
+
+## Local verification (optional)
+
+If a developer does have Godot installed:
 
 ### Windows PowerShell
 
@@ -56,14 +67,13 @@ $env:GODOT_BIN="C:\\path\\to\\Godot_v4.7.2-stable_win64.exe"
 GODOT_BIN=/path/to/godot ./scripts/run_godot_check.sh
 ```
 
-See:
+## Product contract
 
-- `docs/FIRST_RUN.md` — fastest tester workflow
-- `docs/TDD.md` — locked gameplay/technical contract
-- `docs/BUILD.md` — desktop + Android notes
-- `docs/QA_REPORT.md` — exactly what has and has not been verified
-- `docs/THIRD_PARTY_ASSETS.md` — bundled asset provenance/license manifest
+- Gameplay-critical visuals are custom and vendor-free.
+- Possible routes are pale guide rails.
+- Building a sorter reveals continuous dark active belts.
+- Each sorter exposes exactly three colour-assigned exits.
+- Setup cannot change after RUN starts.
+- Difficulty comes from topology, decoys and budget efficiency, not increasing cargo speed.
 
-## Scope discipline
-
-This MVP intentionally does **not** contain ads, IAP, login, backend, economy, live events or a full level editor. Those systems do not help answer the current product question: **is routing a moving stream by switching junctions easy to understand, satisfying and deep enough to justify production?**
+The detailed source of truth is `docs/SORTER_ECONOMY_GAMEPLAY.md`.
