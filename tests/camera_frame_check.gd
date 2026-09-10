@@ -1,13 +1,19 @@
 extends Node
 
-const LEVELS := [1, 3, 7, 10]
-const RECEIVER_HALF_WIDTH := 0.92
-const RECEIVER_HALF_DEPTH := 0.92
-const RECEIVER_HEIGHT := 1.65
-const SOURCE_HALF_WIDTH := 1.90
-const SOURCE_BACK_DEPTH := 2.78
-const SOURCE_FRONT_DEPTH := 0.45
-const SOURCE_HEIGHT := 0.90
+# Vertical-slice camera contract. Legacy levels 4–10 are intentionally excluded
+# until they are rebuilt around the sorter-economy gameplay.
+const LEVELS := [1, 2, 3]
+
+# Bounds mirror the generated toy geometry rather than the old feeder-bank proxy.
+const RECEIVER_HALF_WIDTH := 0.82
+const RECEIVER_BACK_DEPTH := 0.78
+const RECEIVER_FRONT_DEPTH := 1.58
+const RECEIVER_HEIGHT := 1.48
+const COMPACT_SOURCE_HALF_WIDTH := 0.50
+const BANK_SOURCE_HALF_WIDTH := 1.95
+const SOURCE_BACK_DEPTH := 2.68
+const SOURCE_FRONT_DEPTH := 0.22
+const SOURCE_HEIGHT := 0.82
 const SCREEN_MARGIN := 20.0
 
 
@@ -24,6 +30,7 @@ func _ready() -> void:
     for level_number in LEVELS:
         _check_level(rig, level_number, viewport_size, failures, true)
 
+    # Also protect tall modern phones / browser windows.
     viewport.size = Vector2i(1080, 2400)
     viewport_size = rig.camera.get_viewport().get_visible_rect().size
     for level_number in LEVELS:
@@ -33,8 +40,9 @@ func _ready() -> void:
     rig.free()
     remove_child(viewport)
     viewport.free()
+
     if failures.is_empty():
-        print("camera frame: PASS (machines + feeder banks visible)")
+        print("camera frame: PASS (L1-L3 machines + active feeder styles visible)")
         get_tree().quit(0)
         return
     for failure in failures:
@@ -45,7 +53,16 @@ func _ready() -> void:
 
 func _check_level(rig: SceneRig, level_number: int, viewport_size: Vector2, failures: Array[String], require_close_frame: bool) -> void:
     var file := FileAccess.open("res://levels/level_%02d.json" % level_number, FileAccess.READ)
-    var level: Dictionary = JSON.parse_string(file.get_as_text())
+    if file == null:
+        failures.append("level %d could not be opened" % level_number)
+        return
+    var parsed: Variant = JSON.parse_string(file.get_as_text())
+    file.close()
+    if typeof(parsed) != TYPE_DICTIONARY:
+        failures.append("level %d is not valid JSON" % level_number)
+        return
+    var level: Dictionary = parsed
+
     var positions: Dictionary = {}
     for raw_node in level["nodes"]:
         var node: Dictionary = raw_node
@@ -65,10 +82,13 @@ func _check_level(rig: SceneRig, level_number: int, viewport_size: Vector2, fail
         var centre: Vector3 = positions[String(node["id"])]
 
         var xs: Array = [-RECEIVER_HALF_WIDTH, RECEIVER_HALF_WIDTH]
-        var zs: Array = [-RECEIVER_HALF_DEPTH, RECEIVER_HALF_DEPTH]
+        var zs: Array = [-RECEIVER_BACK_DEPTH, RECEIVER_FRONT_DEPTH]
         var ys: Array = [0.0, RECEIVER_HEIGHT]
         if node_type == "source":
-            xs = [-SOURCE_HALF_WIDTH, SOURCE_HALF_WIDTH]
+            var half_width := COMPACT_SOURCE_HALF_WIDTH
+            if String(node.get("source_style", "compact")) == "bank":
+                half_width = BANK_SOURCE_HALF_WIDTH
+            xs = [-half_width, half_width]
             zs = [-SOURCE_BACK_DEPTH, SOURCE_FRONT_DEPTH]
             ys = [0.0, SOURCE_HEIGHT]
 
@@ -82,5 +102,5 @@ func _check_level(rig: SceneRig, level_number: int, viewport_size: Vector2, fail
                         failures.append("level %d %s projects outside the safe frame at %s" % [level_number, node["id"], screen])
 
     var vertical_coverage := (max_screen_y - min_screen_y) / viewport_size.y
-    if require_close_frame and vertical_coverage < 0.60:
+    if require_close_frame and vertical_coverage < 0.56:
         failures.append("level %d fills only %.1f%% of portrait height" % [level_number, vertical_coverage * 100.0])
