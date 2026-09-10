@@ -321,63 +321,67 @@ func _refresh_selection() -> void:
 
 
 func _rebuild_markers() -> void:
-    if _marker_root == null:
+    if _marker_root == null or not _positions.has(sorter_id):
         return
     for child in _marker_root.get_children():
         _marker_root.remove_child(child)
         child.queue_free()
 
+    var origin: Vector3 = _positions[sorter_id]
     for i in range(3):
+        var target := _outputs[i]
+        if target.is_empty() or not _positions.has(target):
+            continue
+
         var lane := Node3D.new()
         lane.name = "Exit%d" % (i + 1)
         _marker_root.add_child(lane)
 
-        var dir := _direction_for_output(i)
         var kind := _mapping[i]
         var colour := VisualFactory.kind_color(kind)
+        var path := TrackGeometry.path_for(sorter_id, target, origin, _positions[target])
+        var path_length := TrackGeometry.length(path)
+        var marker_distance := minf(1.75, maxf(1.15, path_length * 0.36))
+        marker_distance = minf(marker_distance, maxf(0.40, path_length - 0.30))
+        var sample := TrackGeometry.sample_distance(path, marker_distance)
+        var marker_pos: Vector3 = (sample["position"] as Vector3) - origin
+        var tangent: Vector3 = sample["tangent"] as Vector3
+        tangent.y = 0.0
+        if tangent.length_squared() < 0.0001:
+            tangent = _direction_for_output(i)
+        tangent = tangent.normalized()
 
-        # A broad coloured gate is physically attached to the already-visible
-        # black conveyor. This is the primary colour-routing cue.
+        # The gate sits on the actual belt after the three branches have had
+        # enough distance to separate. This makes EXIT 1/2/3 readable spatially.
         var gate := MeshInstance3D.new()
         var gate_mesh := BoxMesh.new()
-        gate_mesh.size = Vector3(0.42, 0.045, 0.66)
+        gate_mesh.size = Vector3(0.46, 0.050, 0.62)
         gate.mesh = gate_mesh
-        gate.position = dir * 0.88 + Vector3(0, 0.19, 0)
-        gate.rotation.y = atan2(dir.x, dir.z)
+        gate.position = marker_pos + Vector3(0, 0.19, 0)
+        gate.rotation.y = atan2(tangent.x, tangent.z)
         gate.material_override = VisualFactory.material(colour, 0.34, 0.10)
         lane.add_child(gate)
 
         var badge := MeshInstance3D.new()
         var badge_mesh := CylinderMesh.new()
-        badge_mesh.top_radius = 0.225
-        badge_mesh.bottom_radius = 0.225
-        badge_mesh.height = 0.040
+        badge_mesh.top_radius = 0.22
+        badge_mesh.bottom_radius = 0.22
+        badge_mesh.height = 0.038
         badge_mesh.radial_segments = 20
         badge.mesh = badge_mesh
-        badge.position = dir * 1.10 + Vector3(0, 0.31, 0)
-        badge.material_override = VisualFactory.material(Color("#F7EFE4"), 0.56)
+        badge.position = marker_pos + Vector3(0, 0.31, 0)
+        badge.material_override = VisualFactory.material(Color("#F7EFE4"), 0.58)
         lane.add_child(badge)
-
-        var dot := MeshInstance3D.new()
-        var dot_mesh := SphereMesh.new()
-        dot_mesh.radius = 0.155
-        dot_mesh.height = 0.31
-        dot_mesh.radial_segments = 18
-        dot_mesh.rings = 8
-        dot.mesh = dot_mesh
-        dot.position = dir * 1.10 + Vector3(0, 0.39, 0)
-        dot.material_override = VisualFactory.material(colour, 0.24, 0.12)
-        lane.add_child(dot)
 
         var number := Label3D.new()
         number.text = str(i + 1)
-        number.font_size = 64
-        number.pixel_size = 0.0036
-        number.modulate = Color("#3F3B37")
-        number.outline_size = 5
-        number.outline_modulate = Color(1, 1, 1, 0.80)
+        number.font_size = 68
+        number.pixel_size = 0.0035
+        number.modulate = Color("#35312E")
+        number.outline_size = 7
+        number.outline_modulate = colour.lightened(0.42)
         number.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-        number.position = dir * 1.10 + Vector3(0, 0.64, 0)
+        number.position = marker_pos + Vector3(0, 0.50, 0)
         lane.add_child(number)
 
 
