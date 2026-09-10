@@ -1,56 +1,24 @@
-; Engine configuration file.
-; It's best edited using the editor UI and not directly,
-; since the parameters that go here are not all obvious.
-;
-; Format:
-;   [section] ; section goes between []
-;   param=value ; assign values to parameters
-
-config_version=5
-
 [application]
+config/name="Smash MVP Godot"
+run/main_scene="res://scenes/Main.tscn"
 
-config/name="Flow Factory"
-config/description="A tactile routing puzzle MVP for mobile."
-config/version="0.3.0-mvp"
-run/main_scene="res://app/main.tscn"
-config/features=PackedStringArray("4.7", "GL Compatibility")
-boot_splash/bg_color=Color(0.741176, 0.815686, 0.85098, 1)
-boot_splash/image="res://assets/branding/splash.png"
-config/icon="res://assets/branding/icon.png"
 
 [autoload]
-
-SaveService="*res://services/save_service.gd"
-AudioService="*res://services/audio_service.gd"
-HapticService="*res://services/haptic_service.gd"
-AnalyticsService="*res://services/analytics_service.gd"
+GameEvents="*res://scripts/game_events.gd"
 
 [display]
-
-window/size/viewport_width=1080
-window/size/viewport_height=1920
-window/size/window_width_override=540
-window/size/window_height_override=960
+window/size/viewport_width=720
+window/size/viewport_height=1280
+window/size/window_width_override=720
+window/size/window_height_override=1280
 window/stretch/mode="canvas_items"
-window/stretch/aspect="expand"
-window/handheld/orientation=1
-
-[dotnet]
-
-project/assembly_name="Flow Factory"
-
-[input_devices]
-
-pointing/emulate_touch_from_mouse=true
-
-[internationalization]
-
-locale/translations=PackedStringArray("res://localisation/strings.en.translation", "res://localisation/strings.vi.translation")
-locale/fallback="en"
 
 [rendering]
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+textures/default_filters/use_nearest_mipmap_filter=false
 
-renderer/rendering_method="mobile"
-renderer/rendering_method.mobile="mobile"
-anti_aliasing/quality/msaa_3d=1
+audio/buses/default_bus_layout="res://default_bus_layout.tres"
+
+[physics]
+3d/default_gravity=22.0

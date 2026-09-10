@@ -1,7 +1,4 @@
 .godot/
-.android/
 build/
-builds/
-*.tmp
-*.log
+export/
 .DS_Store

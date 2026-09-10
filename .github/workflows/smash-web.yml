@@ -1,0 +1,43 @@
+name: Smash MVP Web Build
+
+on:
+  push:
+    branches: [smash-mvp]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  export-web:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.7.2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare export templates
+        run: |
+          mkdir -p ~/.local/share/godot/export_templates
+          if [ -d /root/.local/share/godot/export_templates/4.7.2.stable ]; then
+            cp -R /root/.local/share/godot/export_templates/4.7.2.stable ~/.local/share/godot/export_templates/
+          elif [ -d /root/.local/share/godot/templates/4.7.2.stable ]; then
+            cp -R /root/.local/share/godot/templates/4.7.2.stable ~/.local/share/godot/export_templates/
+          fi
+
+      - name: Parse project
+        run: godot --headless --editor --path . --quit-after 2
+
+      - name: Export Web
+        run: |
+          mkdir -p build/web
+          godot --headless --path . --export-release "Web" build/web/index.html
+
+      - name: Publish preview branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: smash-web
+          publish_dir: ./build/web
+          force_orphan: true

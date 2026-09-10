@@ -1,0 +1,176 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/game_manager.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/ui.gd" id="4"]
+
+[sub_resource type="BoxMesh" id="TrayMesh"]
+size = Vector3(7, 0.35, 4.6)
+
+[sub_resource type="BoxShape3D" id="TrayShape"]
+size = Vector3(7, 0.35, 4.6)
+
+[sub_resource type="StandardMaterial3D" id="TrayMat"]
+albedo_color = Color(0.91, 0.75, 0.48, 1)
+roughness = 0.65
+
+[sub_resource type="BoxMesh" id="GroundMesh"]
+size = Vector3(18, 0.45, 14)
+
+[sub_resource type="BoxShape3D" id="GroundShape"]
+size = Vector3(18, 0.45, 14)
+
+[sub_resource type="StandardMaterial3D" id="GroundMat"]
+albedo_color = Color(0.48, 0.76, 0.35, 1)
+roughness = 0.8
+
+[sub_resource type="Environment" id="Env"]
+background_mode = 1
+background_color = Color(0.56, 0.82, 0.98, 1)
+ambient_light_source = 3
+ambient_light_color = Color(1, 1, 1, 1)
+ambient_light_energy = 0.9
+
+[node name="Main" type="Node3D"]
+script = ExtResource("1")
+
+[node name="GameManager" type="Node" parent="."]
+script = ExtResource("3")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-48, -28, 0)
+light_energy = 1.5
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+position = Vector3(0, 7.4, 11.2)
+rotation_degrees = Vector3(-29, 0, 0)
+current = true
+fov = 42.0
+
+[node name="Tray" type="StaticBody3D" parent="."]
+position = Vector3(0, 0, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Tray"]
+mesh = SubResource("TrayMesh")
+material_override = SubResource("TrayMat")
+
+[node name="Collision" type="CollisionShape3D" parent="Tray"]
+shape = SubResource("TrayShape")
+
+[node name="Ground" type="StaticBody3D" parent="." groups=["ground"]]
+position = Vector3(0, -3.5, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Ground"]
+mesh = SubResource("GroundMesh")
+material_override = SubResource("GroundMat")
+
+[node name="Collision" type="CollisionShape3D" parent="Ground"]
+shape = SubResource("GroundShape")
+
+[node name="Level" type="Node3D" parent="."]
+
+[node name="UI" type="CanvasLayer" parent="."]
+script = ExtResource("4")
+manager_path = NodePath("../GameManager")
+
+[node name="Status" type="Label" parent="UI"]
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 300.0
+offset_bottom = 64.0
+theme_override_font_sizes/font_size = 26
+text = "BALLS"
+
+[node name="Ammo" type="Label" parent="UI"]
+offset_left = 24.0
+offset_top = 66.0
+offset_right = 696.0
+offset_bottom = 106.0
+theme_override_font_sizes/font_size = 20
+text = "AMMO"
+
+[node name="Bottom" type="HBoxContainer" parent="UI"]
+offset_left = 62.0
+offset_top = 1125.0
+offset_right = 658.0
+offset_bottom = 1225.0
+theme_override_constants/separation = 16
+
+[node name="Wood" type="Button" parent="UI/Bottom"]
+custom_minimum_size = Vector2(135, 88)
+text = "WOOD"
+
+[node name="Stone" type="Button" parent="UI/Bottom"]
+custom_minimum_size = Vector2(135, 88)
+text = "STONE"
+
+[node name="Fire" type="Button" parent="UI/Bottom"]
+custom_minimum_size = Vector2(135, 88)
+text = "FIRE"
+
+[node name="Wild" type="Button" parent="UI/Bottom"]
+custom_minimum_size = Vector2(135, 88)
+text = "WILD"
+
+[node name="WinPanel" type="Control" parent="UI"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 1
+
+[node name="Center" type="CenterContainer" parent="UI/WinPanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Box" type="VBoxContainer" parent="UI/WinPanel/Center"]
+custom_minimum_size = Vector2(430, 280)
+alignment = 1
+
+[node name="Title" type="Label" parent="UI/WinPanel/Center/Box"]
+theme_override_font_sizes/font_size = 38
+text = "LEVEL COMPLETE"
+horizontal_alignment = 1
+
+[node name="Stars" type="Label" parent="UI/WinPanel/Center/Box"]
+theme_override_font_sizes/font_size = 52
+text = "★★★"
+horizontal_alignment = 1
+
+[node name="Retry" type="Button" parent="UI/WinPanel/Center/Box"]
+custom_minimum_size = Vector2(300, 70)
+text = "PLAY AGAIN"
+
+[node name="LosePanel" type="Control" parent="UI"]
+visible = false
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 1
+
+[node name="Center" type="CenterContainer" parent="UI/LosePanel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Box" type="VBoxContainer" parent="UI/LosePanel/Center"]
+custom_minimum_size = Vector2(430, 240)
+alignment = 1
+
+[node name="Title" type="Label" parent="UI/LosePanel/Center/Box"]
+theme_override_font_sizes/font_size = 38
+text = "OUT OF AMMO"
+horizontal_alignment = 1
+
+[node name="Retry" type="Button" parent="UI/LosePanel/Center/Box"]
+custom_minimum_size = Vector2(300, 70)
+text = "RETRY"
