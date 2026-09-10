@@ -52,9 +52,10 @@ static func create_floor(parent: Node3D, occupied: Array = []) -> Node3D:
     root.name = "ReferenceToyYard"
     parent.add_child(root)
 
-    # One uninterrupted cream play surface. There is deliberately no inset
-    # rectangle or board edge: the reference reads as one continuous toy yard.
-    var ground := _box(Vector3(14.0, 0.24, 19.0), Color("#F1E4D3"), 0.94)
+    # One uninterrupted warm toy-yard surface. The palette, rather than a
+    # hard-coded near-white, is the source of truth so the board keeps the
+    # softer beige value seen in the AI reference video.
+    var ground := _box(Vector3(14.0, 0.24, 19.0), FLOOR_COLOR, 0.94)
     ground.position = Vector3(0, -0.27, 0.25)
     ground.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
     root.add_child(ground)
