@@ -15,6 +15,7 @@ var _best_label: Label
 var _hint_label: Label
 var _config_panel: PanelContainer
 var _config_title: Label
+var _config_subtitle: Label
 var _lane_buttons: Array[Button] = []
 var _remove_button: Button
 var _run_button: Button
@@ -23,7 +24,6 @@ var _result_panel: PanelContainer
 var _result_title: Label
 var _result_stars: Label
 var _result_subtitle: Label
-
 var _sorter_cost := 3
 var _last_gold := -1
 
@@ -46,12 +46,10 @@ func show_planning(gold_remaining: int = 0, spent: int = 0, optimal: int = 0, so
     clear_sorter()
     set_budget(gold_remaining, spent, optimal)
 
-    # Do not expose BEST during planning. The puzzle is stronger when the player
-    # discovers the minimum build themselves and sees the proof on the result card.
     if optimal > 0 and gold_remaining > optimal:
-        _hint_label.text = "Not every foundation is needed • spend as little as possible"
+        _hint_label.text = "Not every build pad is needed  •  find the cheapest route"
     else:
-        _hint_label.text = "Tap a + foundation to build • sorter costs %d gold" % _sorter_cost
+        _hint_label.text = "Tap a + pad to install a sorter  •  costs %d gold" % _sorter_cost
 
 
 func show_running() -> void:
@@ -62,15 +60,12 @@ func show_running() -> void:
 func set_budget(gold_remaining: int, spent: int, _optimal: int) -> void:
     if _gold_label == null:
         return
-
-    var gold_changed := _last_gold >= 0 and gold_remaining != _last_gold
+    var changed := _last_gold >= 0 and gold_remaining != _last_gold
     _last_gold = gold_remaining
-
     _gold_label.text = "GOLD  %d" % gold_remaining
     _spent_label.text = "USED  %d" % spent
-    _best_label.text = "BUILD  %d" % _sorter_cost
-
-    if gold_changed:
+    _best_label.text = "SORTER  %d" % _sorter_cost
+    if changed:
         _gold_label.scale = Vector2.ONE * 0.90
         var tween := Motion.tween(_gold_label)
         tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -87,15 +82,15 @@ func show_sorter(sorter_id: String, mapping: Array, cost: int) -> void:
     if _config_panel == null:
         return
     _config_panel.visible = true
-    _config_title.text = "SORTER %s   •   3 LANES" % sorter_id
-    _hint_label.text = "Check each lane colour against its destination • then RUN"
+    _config_title.text = "SORTER %s" % sorter_id
+    _config_subtitle.text = "Match EXIT 1 / 2 / 3 to the numbered gates on the belts"
+    _hint_label.text = "Tap an EXIT below to swap its colour  •  then RUN"
 
     for i in range(_lane_buttons.size()):
         var kind := String(mapping[i]) if i < mapping.size() else "red"
-        _lane_buttons[i].text = "%d   %s" % [i + 1, kind.to_upper()]
+        _lane_buttons[i].text = "%d  →  %s" % [i + 1, kind.to_upper()]
         _style_lane_button(_lane_buttons[i], kind)
-
-    _remove_button.text = "REMOVE   +%d" % cost
+    _remove_button.text = "REMOVE  +%d" % cost
 
 
 func clear_sorter() -> void:
@@ -107,7 +102,7 @@ func flash_message(message: String) -> void:
     if _hint_label == null:
         return
     _hint_label.text = message
-    _hint_label.modulate = Color("#C6674C")
+    _hint_label.modulate = Color("#C25F48")
     var tween := Motion.tween(_hint_label)
     tween.tween_property(_hint_label, "modulate", Color.WHITE, 0.35)
 
@@ -152,45 +147,48 @@ func _build() -> void:
     _stats.add_theme_constant_override("separation", 8)
     _root.add_child(_stats)
 
-    _gold_label = _stat_pill("GOLD  0", Color("#F2DEA0"))
-    _spent_label = _stat_pill("USED  0", Color("#F3E4D3"))
-    _best_label = _stat_pill("BUILD  3", Color("#E6DED1"))
+    _gold_label = _stat_pill("GOLD  0", Color("#EAD49A"))
+    _spent_label = _stat_pill("USED  0", Color("#EADCCD"))
+    _best_label = _stat_pill("SORTER  3", Color("#DDD7CD"))
     _stats.add_child(_gold_label)
     _stats.add_child(_spent_label)
     _stats.add_child(_best_label)
 
     _hint_label = Label.new()
     _hint_label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-    _hint_label.position = Vector2(-330, -330)
-    _hint_label.size = Vector2(660, 38)
+    _hint_label.position = Vector2(-360, -342)
+    _hint_label.size = Vector2(720, 40)
     _hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     _hint_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     _hint_label.add_theme_font_size_override("font_size", 16)
-    _hint_label.add_theme_color_override("font_color", Color("#685E54"))
+    _hint_label.add_theme_color_override("font_color", Color("#62594F"))
     _root.add_child(_hint_label)
 
     _config_panel = PanelContainer.new()
     _config_panel.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-    _config_panel.position = Vector2(-315, -288)
-    _config_panel.size = Vector2(630, 112)
+    _config_panel.position = Vector2(-330, -300)
+    _config_panel.size = Vector2(660, 132)
     _config_panel.mouse_filter = Control.MOUSE_FILTER_STOP
-    _config_panel.add_theme_stylebox_override(
-        "panel",
-        _panel_style(Color("#F8EBDDFA"), 22, Color(0, 0, 0, 0.10), 9)
-    )
+    _config_panel.add_theme_stylebox_override("panel", _panel_style(Color("#EDE0D2FC"), 24, Color(0, 0, 0, 0.10), 9))
     _root.add_child(_config_panel)
 
     var config_box := VBoxContainer.new()
     config_box.alignment = BoxContainer.ALIGNMENT_CENTER
-    config_box.add_theme_constant_override("separation", 7)
+    config_box.add_theme_constant_override("separation", 4)
     _config_panel.add_child(config_box)
 
     _config_title = Label.new()
     _config_title.text = "SORTER"
     _config_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-    _config_title.add_theme_font_size_override("font_size", 17)
-    _config_title.add_theme_color_override("font_color", Color("#514B45"))
+    _config_title.add_theme_font_size_override("font_size", 18)
+    _config_title.add_theme_color_override("font_color", Color("#47423D"))
     config_box.add_child(_config_title)
+
+    _config_subtitle = Label.new()
+    _config_subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+    _config_subtitle.add_theme_font_size_override("font_size", 12)
+    _config_subtitle.add_theme_color_override("font_color", Color("#756C63"))
+    config_box.add_child(_config_subtitle)
 
     var lane_row := HBoxContainer.new()
     lane_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -199,8 +197,8 @@ func _build() -> void:
 
     for i in range(3):
         var button := Button.new()
-        button.text = "%d   RED" % (i + 1)
-        button.custom_minimum_size = Vector2(142, 42)
+        button.text = "%d  →  RED" % (i + 1)
+        button.custom_minimum_size = Vector2(146, 46)
         button.add_theme_font_size_override("font_size", 15)
         _style_lane_button(button, "red")
         var lane_index := i
@@ -210,7 +208,7 @@ func _build() -> void:
 
     _remove_button = Button.new()
     _remove_button.text = "REMOVE"
-    _remove_button.custom_minimum_size = Vector2(142, 42)
+    _remove_button.custom_minimum_size = Vector2(146, 46)
     _remove_button.add_theme_font_size_override("font_size", 13)
     _style_remove_button(_remove_button)
     _remove_button.pressed.connect(func() -> void: remove_requested.emit())
@@ -219,10 +217,10 @@ func _build() -> void:
     _run_button = Button.new()
     _run_button.text = "RUN"
     _run_button.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-    _run_button.position = Vector2(-120, -154)
-    _run_button.size = Vector2(240, 56)
+    _run_button.position = Vector2(-130, -154)
+    _run_button.size = Vector2(260, 60)
     _run_button.mouse_filter = Control.MOUSE_FILTER_STOP
-    _run_button.add_theme_font_size_override("font_size", 21)
+    _run_button.add_theme_font_size_override("font_size", 22)
     _style_run_button(_run_button)
     _run_button.pressed.connect(func() -> void: run_requested.emit())
     _root.add_child(_run_button)
@@ -239,10 +237,7 @@ func _build() -> void:
     _result_panel.size = Vector2(560, 420)
     _result_panel.pivot_offset = Vector2(280, 210)
     _result_panel.mouse_filter = Control.MOUSE_FILTER_STOP
-    _result_panel.add_theme_stylebox_override(
-        "panel",
-        _panel_style(Color("#FFF9F2FC"), 30, Color(0, 0, 0, 0.20), 18)
-    )
+    _result_panel.add_theme_stylebox_override("panel", _panel_style(Color("#F6EEE5FC"), 30, Color(0, 0, 0, 0.20), 18))
     _root.add_child(_result_panel)
 
     var result_box := VBoxContainer.new()
@@ -253,19 +248,19 @@ func _build() -> void:
     _result_title = Label.new()
     _result_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     _result_title.add_theme_font_size_override("font_size", 30)
-    _result_title.add_theme_color_override("font_color", Color("#4D4741"))
+    _result_title.add_theme_color_override("font_color", Color("#47423D"))
     result_box.add_child(_result_title)
 
     _result_stars = Label.new()
     _result_stars.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     _result_stars.add_theme_font_size_override("font_size", 50)
-    _result_stars.add_theme_color_override("font_color", Color("#DBA93E"))
+    _result_stars.add_theme_color_override("font_color", Color("#D4A23D"))
     result_box.add_child(_result_stars)
 
     _result_subtitle = Label.new()
     _result_subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     _result_subtitle.add_theme_font_size_override("font_size", 17)
-    _result_subtitle.add_theme_color_override("font_color", Color("#71675D"))
+    _result_subtitle.add_theme_color_override("font_color", Color("#6A625A"))
     result_box.add_child(_result_subtitle)
 
     var next_button := Button.new()
@@ -297,11 +292,8 @@ func _stat_pill(text_value: String, bg: Color) -> Label:
     label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     label.add_theme_font_size_override("font_size", 15)
-    label.add_theme_color_override("font_color", Color("#5F574F"))
-    label.add_theme_stylebox_override(
-        "normal",
-        _panel_style(bg, 14, Color(0, 0, 0, 0.06), 3)
-    )
+    label.add_theme_color_override("font_color", Color("#564F48"))
+    label.add_theme_stylebox_override("normal", _panel_style(bg, 14, Color(0, 0, 0, 0.055), 3))
     return label
 
 
@@ -324,15 +316,15 @@ func _panel_style(bg: Color, radius: int, shadow: Color, shadow_size: int) -> St
 
 func _style_run_button(button: Button) -> void:
     var normal := StyleBoxFlat.new()
-    normal.bg_color = Color("#D97858")
+    normal.bg_color = Color("#D87555")
     normal.corner_radius_top_left = 18
     normal.corner_radius_top_right = 18
     normal.corner_radius_bottom_left = 18
     normal.corner_radius_bottom_right = 18
     var pressed := normal.duplicate() as StyleBoxFlat
-    pressed.bg_color = Color("#C7684A")
+    pressed.bg_color = Color("#C76549")
     var disabled := normal.duplicate() as StyleBoxFlat
-    disabled.bg_color = Color("#CBB9AA")
+    disabled.bg_color = Color("#BDAE9F")
     for state in ["normal", "hover", "focus"]:
         button.add_theme_stylebox_override(state, normal)
     button.add_theme_stylebox_override("pressed", pressed)
@@ -340,7 +332,7 @@ func _style_run_button(button: Button) -> void:
     button.add_theme_color_override("font_color", Color.WHITE)
     button.add_theme_color_override("font_hover_color", Color.WHITE)
     button.add_theme_color_override("font_pressed_color", Color.WHITE)
-    button.add_theme_color_override("font_disabled_color", Color("#F1E9E1"))
+    button.add_theme_color_override("font_disabled_color", Color("#EEE6DE"))
 
 
 func _style_lane_button(button: Button, kind: String) -> void:
@@ -348,51 +340,56 @@ func _style_lane_button(button: Button, kind: String) -> void:
     var pressed := StyleBoxFlat.new()
     match kind:
         "red":
-            normal.bg_color = Color("#F1C0B4")
-            pressed.bg_color = Color("#E4A997")
+            normal.bg_color = Color("#E9B5A8")
+            pressed.bg_color = Color("#D99B8A")
         "blue":
-            normal.bg_color = Color("#BDD2E6")
-            pressed.bg_color = Color("#A7C1DA")
+            normal.bg_color = Color("#B3CCE0")
+            pressed.bg_color = Color("#98B8D1")
         "yellow":
-            normal.bg_color = Color("#EAD79C")
-            pressed.bg_color = Color("#DCC47D")
+            normal.bg_color = Color("#E3CF8F")
+            pressed.bg_color = Color("#D2B96D")
         _:
-            normal.bg_color = Color("#EFE1D1")
-            pressed.bg_color = Color("#DCC9B5")
-
+            normal.bg_color = Color("#E3D7CA")
+            pressed.bg_color = Color("#CEBEAE")
     for style in [normal, pressed]:
         style.corner_radius_top_left = 14
         style.corner_radius_top_right = 14
         style.corner_radius_bottom_left = 14
         style.corner_radius_bottom_right = 14
-
     for state in ["normal", "hover", "focus"]:
         button.add_theme_stylebox_override(state, normal)
     button.add_theme_stylebox_override("pressed", pressed)
-    button.add_theme_color_override("font_color", Color("#473F38"))
-    button.add_theme_color_override("font_hover_color", Color("#473F38"))
-    button.add_theme_color_override("font_pressed_color", Color("#473F38"))
+    button.add_theme_color_override("font_color", Color("#403A35"))
+    button.add_theme_color_override("font_hover_color", Color("#403A35"))
+    button.add_theme_color_override("font_pressed_color", Color("#403A35"))
 
 
-func _style_secondary_button(button: Button) -> void:
+func _style_remove_button(button: Button) -> void:
     var normal := StyleBoxFlat.new()
-    normal.bg_color = Color("#EFE1D1")
+    normal.bg_color = Color("#E6D8CA")
     normal.corner_radius_top_left = 14
     normal.corner_radius_top_right = 14
     normal.corner_radius_bottom_left = 14
     normal.corner_radius_bottom_right = 14
     var pressed := normal.duplicate() as StyleBoxFlat
-    pressed.bg_color = Color("#DCC9B5")
+    pressed.bg_color = Color("#D6C3B2")
     for state in ["normal", "hover", "focus"]:
         button.add_theme_stylebox_override(state, normal)
     button.add_theme_stylebox_override("pressed", pressed)
-    button.add_theme_color_override("font_color", Color("#574F47"))
-    button.add_theme_color_override("font_hover_color", Color("#574F47"))
-    button.add_theme_color_override("font_pressed_color", Color("#574F47"))
+    button.add_theme_color_override("font_color", Color("#A05642"))
+    button.add_theme_color_override("font_hover_color", Color("#A05642"))
+    button.add_theme_color_override("font_pressed_color", Color("#A05642"))
 
 
-func _style_remove_button(button: Button) -> void:
-    _style_secondary_button(button)
-    button.add_theme_color_override("font_color", Color("#A95E4C"))
-    button.add_theme_color_override("font_hover_color", Color("#A95E4C"))
-    button.add_theme_color_override("font_pressed_color", Color("#A95E4C"))
+func _style_secondary_button(button: Button) -> void:
+    var normal := StyleBoxFlat.new()
+    normal.bg_color = Color("#E5D9CC")
+    normal.corner_radius_top_left = 16
+    normal.corner_radius_top_right = 16
+    normal.corner_radius_bottom_left = 16
+    normal.corner_radius_bottom_right = 16
+    for state in ["normal", "hover", "pressed", "focus"]:
+        button.add_theme_stylebox_override(state, normal)
+    button.add_theme_color_override("font_color", Color("#514B45"))
+    button.add_theme_color_override("font_hover_color", Color("#514B45"))
+    button.add_theme_color_override("font_pressed_color", Color("#514B45"))
