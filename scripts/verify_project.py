@@ -143,14 +143,18 @@ def simulate_spawn(
         return False
 
 
-def solve_sorter_level(level: dict) -> tuple[int | None, dict | None]:
+def solve_sorter_level(level: dict) -> tuple[int | None, dict | None, int, int]:
     nodes = {node["id"]: node for node in level["nodes"]}
     sorter_ids = [node["id"] for node in level["nodes"] if node["type"] == "sorter_site"]
     permutations = list(itertools.permutations(KINDS))
     best_cost: int | None = None
     best_solution: dict | None = None
+    valid_solutions = 0
+    optimal_solutions = 0
+    budget = int(level["gold_budget"])
 
     # A site has seven states: unbuilt, or built with one of six permutations.
+    # Three slice levels are intentionally tiny enough to exhaustively prove.
     for state in itertools.product(range(7), repeat=len(sorter_ids)):
         built: set[str] = set()
         mappings: dict[str, tuple[str, str, str]] = {}
@@ -164,14 +168,32 @@ def solve_sorter_level(level: dict) -> tuple[int | None, dict | None]:
             node = nodes[sorter_id]
             cost += int(node.get("build_cost", level["sorter_cost"]))
 
-        if best_cost is not None and cost >= best_cost:
+        if cost > budget:
             continue
 
-        if all(simulate_spawn(nodes, spawn, built, mappings) for spawn in level["spawns"]):
+        if not all(simulate_spawn(nodes, spawn, built, mappings) for spawn in level["spawns"]):
+            continue
+
+        valid_solutions += 1
+        if best_cost is None or cost < best_cost:
             best_cost = cost
             best_solution = {"built": sorted(built), "mappings": mappings}
+            optimal_solutions = 1
+        elif cost == best_cost:
+            optimal_solutions += 1
 
-    return best_cost, best_solution
+    return best_cost, best_solution, valid_solutions, optimal_solutions
+
+
+def initial_mapping_solves(level: dict) -> bool:
+    nodes = {node["id"]: node for node in level["nodes"]}
+    sorter_nodes = [node for node in level["nodes"] if node["type"] == "sorter_site"]
+    built = {node["id"] for node in sorter_nodes}
+    mappings = {
+        node["id"]: tuple(node.get("mapping", KINDS))
+        for node in sorter_nodes
+    }
+    return all(simulate_spawn(nodes, spawn, built, mappings) for spawn in level["spawns"])
 
 
 def validate_level(level: dict, expected_id: int) -> None:
@@ -223,7 +245,7 @@ def validate_level(level: dict, expected_id: int) -> None:
     if graph_has_cycle(nodes):
         fail(f"{name}: graph contains a cycle")
 
-    best_cost, solution = solve_sorter_level(level)
+    best_cost, solution, valid_count, optimal_count = solve_sorter_level(level)
     if best_cost is None:
         fail(f"{name}: no valid sorter configuration solves all cargo")
         return
@@ -241,12 +263,35 @@ def validate_level(level: dict, expected_id: int) -> None:
     optimal_builds = len(solution["built"]) if solution else 0
     decoys = sorter_count - optimal_builds
     print(
-        f" - L{expected_id}: optimal={best_cost} gold, "
-        f"sites={sorter_count}, optimal_builds={optimal_builds}, decoys={decoys}"
+        f" - L{expected_id}: optimal={best_cost} gold, sites={sorter_count}, "
+        f"optimal_builds={optimal_builds}, decoys={decoys}, "
+        f"valid_plans={valid_count}, optimal_plans={optimal_count}"
     )
 
-    if expected_id == 3 and decoys < 2:
-        fail("level_03.json: optimization lesson needs at least two unnecessary build sites")
+    # A polished puzzle should have a clear intended best answer, not several
+    # equally-cheap configurations that teach different rules by accident.
+    if optimal_count != 1:
+        fail(f"{name}: expected one unique optimal plan, solver found {optimal_count}")
+
+    # Curriculum contract: L1 teaches BUILD, L2 teaches CONFIGURE, L3 teaches
+    # OPTIMIZE. This stops later level edits from silently ruining onboarding.
+    if expected_id == 1:
+        if sorter_count != 1 or budget != best_cost:
+            fail("level_01.json: BUILD lesson must contain one required sorter and exact budget")
+        if not initial_mapping_solves(level):
+            fail("level_01.json: initial colours must already be correct; teach building first")
+
+    if expected_id == 2:
+        if sorter_count != 1 or budget != best_cost:
+            fail("level_02.json: CONFIGURE lesson must use one required sorter")
+        if initial_mapping_solves(level):
+            fail("level_02.json: initial colours must be wrong so the player learns programming")
+
+    if expected_id == 3:
+        if decoys < 2:
+            fail("level_03.json: OPTIMIZE lesson needs at least two unnecessary build sites")
+        if budget <= best_cost:
+            fail("level_03.json: OPTIMIZE lesson needs enough spare gold to allow a wasteful solution")
 
 
 def check_slice_levels() -> None:
@@ -276,9 +321,19 @@ def check_controller_contract() -> None:
             fail(f"game_controller.gd missing sorter-economy contract token: {token}")
 
     sorter_text = (ROOT / "gameplay" / "sorter_actor.gd").read_text(encoding="utf-8")
-    for token in ("func build()", "func demolish()", "func cycle_lane", "ActiveSorterBelts"):
+    for token in (
+        "func build()",
+        "func demolish()",
+        "func cycle_lane",
+        "ActiveSorterBelts",
+        "SorterLaneMarkers",
+    ):
         if token not in sorter_text:
             fail(f"sorter_actor.gd missing: {token}")
+
+    planning_text = (ROOT / "ui" / "planning_hud.gd").read_text(encoding="utf-8")
+    if '"BEST  %d"' in planning_text:
+        fail("planning_hud.gd: do not reveal the optimal cost before the result")
 
 
 def check_audio() -> None:
@@ -304,9 +359,11 @@ def main() -> int:
         return 1
 
     print("FLOW FACTORY VERIFY: PASS")
-    print(" - 3-level vertical slice uses build -> configure -> run")
+    print(" - L1 teaches BUILD, L2 teaches CONFIGURE, L3 teaches OPTIMIZE")
     print(" - exhaustive solver proves declared optimal gold costs")
+    print(" - every slice level has exactly one cheapest solution")
     print(" - level 3 contains deliberate unnecessary build sites")
+    print(" - optimal cost stays hidden until the result screen")
     print(" - custom visuals remain vendor-free")
     return 0
 
