@@ -1,0 +1,168 @@
+name: Flow Factory Web Preview
+
+on:
+  push:
+    branches:
+      - gameplay/sorter-economy-vertical-slice
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flow-factory-web-preview
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: "4.7.2"
+  GODOT_RELEASE: "4.7.2-stable"
+  GODOT_TEMPLATE_VERSION: "4.7.2.stable"
+  GODOT_LINUX_SHA256: "cadd3204e728a35d3f13adb7fd0d7902636b79f6b95c40c265eb73b6c35329e4"
+  GODOT_TEMPLATES_SHA256: "f298490b8d44d934be425a5a65a51bf15f422428b229a06a6e11d9ffea248011"
+
+jobs:
+  build:
+    name: Verify and export Web
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@v6
+
+      - name: Validate level solver and source contracts
+        run: python3 scripts/verify_project.py
+
+      - name: Cache pinned Godot editor and templates
+        id: godot-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .ci/godot
+            ~/.local/share/godot/export_templates/4.7.2.stable
+          key: flow-factory-godot-${{ runner.os }}-4.7.2-web-v1
+
+      - name: Install pinned official Godot tooling
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          RELEASE_BASE="https://github.com/godotengine/godot-builds/releases/download/${GODOT_RELEASE}"
+          EDITOR_ARCHIVE="/tmp/Godot_v${GODOT_RELEASE}_linux.x86_64.zip"
+          TEMPLATE_ARCHIVE="/tmp/Godot_v${GODOT_RELEASE}_export_templates.tpz"
+
+          curl --fail --location --retry 5 --retry-delay 2 \
+            "${RELEASE_BASE}/Godot_v${GODOT_RELEASE}_linux.x86_64.zip" \
+            --output "${EDITOR_ARCHIVE}"
+          echo "${GODOT_LINUX_SHA256}  ${EDITOR_ARCHIVE}" | sha256sum --check --strict
+
+          curl --fail --location --retry 5 --retry-delay 2 \
+            "${RELEASE_BASE}/Godot_v${GODOT_RELEASE}_export_templates.tpz" \
+            --output "${TEMPLATE_ARCHIVE}"
+          echo "${GODOT_TEMPLATES_SHA256}  ${TEMPLATE_ARCHIVE}" | sha256sum --check --strict
+
+          rm -rf .ci/godot .ci/template_unpack
+          mkdir -p .ci/godot .ci/template_unpack
+          unzip -q "${EDITOR_ARCHIVE}" -d .ci/godot
+          mv ".ci/godot/Godot_v${GODOT_RELEASE}_linux.x86_64" .ci/godot/godot
+          chmod +x .ci/godot/godot
+
+          TEMPLATE_DIR="${HOME}/.local/share/godot/export_templates/${GODOT_TEMPLATE_VERSION}"
+          rm -rf "${TEMPLATE_DIR}"
+          mkdir -p "${TEMPLATE_DIR}"
+          unzip -q "${TEMPLATE_ARCHIVE}" -d .ci/template_unpack
+          cp -a .ci/template_unpack/templates/. "${TEMPLATE_DIR}/"
+
+          rm -rf .ci/template_unpack "${EDITOR_ARCHIVE}" "${TEMPLATE_ARCHIVE}"
+
+      - name: Confirm Godot version
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x .ci/godot/godot
+          .ci/godot/godot --version | tee /tmp/godot-version.txt
+          grep -q "^${GODOT_VERSION}" /tmp/godot-version.txt
+
+      - name: Run Godot headless QA suite
+        shell: bash
+        run: |
+          set -euo pipefail
+          GODOT_BIN="${GITHUB_WORKSPACE}/.ci/godot/godot" bash scripts/run_godot_check.sh
+
+      - name: Export release Web preview
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf build/web
+          mkdir -p build/web
+          .ci/godot/godot --headless --path . --export-release "Web Preview" build/web/index.html
+
+      - name: Validate exported bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          root = Path("build/web")
+          index = root / "index.html"
+          if not index.is_file() or index.stat().st_size == 0:
+              raise SystemExit("missing or empty build/web/index.html")
+
+          html = index.read_text(encoding="utf-8")
+          if "$GODOT_" in html:
+              raise SystemExit("custom HTML shell contains unresolved Godot placeholders")
+
+          for suffix in (".js", ".wasm", ".pck"):
+              matches = [p for p in root.glob(f"*{suffix}") if p.stat().st_size > 0]
+              if not matches:
+                  raise SystemExit(f"missing non-empty {suffix} output")
+
+          print("web bundle: PASS")
+          PY
+
+          touch build/web/.nojekyll
+          cat > build/web/build-info.json <<EOF
+          {
+            "commit": "${GITHUB_SHA}",
+            "branch": "${GITHUB_REF_NAME}",
+            "godot": "${GODOT_VERSION}",
+            "built_at_utc": "$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          }
+          EOF
+
+      - name: Upload downloadable Web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: flow-factory-web-${{ github.sha }}
+          path: build/web
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: build/web
+
+  deploy:
+    name: Deploy Web Preview
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Confirm GitHub Pages configuration
+        uses: actions/configure-pages@v5
+
+      - name: Deploy verified artifact
+        id: deployment
+        uses: actions/deploy-pages@v4
