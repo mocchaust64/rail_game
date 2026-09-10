@@ -5,13 +5,13 @@ extends Node3D
 # the bottom buffer can appear without forcing a far-away board view.
 
 const KEY_LIGHT_EULER := Vector3(-51, 28, -8)
-const KEY_LIGHT_ENERGY := 1.48
-const KEY_LIGHT_COLOR := Color("#FFF4DE")
+const KEY_LIGHT_ENERGY := 1.14
+const KEY_LIGHT_COLOR := Color("#FFEED8")
 const KEY_LIGHT_SOFTNESS := 2.35
 const SHADOW_BIAS := 0.022
 const SHADOW_NORMAL_BIAS := 0.70
 const SHADOW_MAX_DISTANCE := 42.0
-const AMBIENT_ENERGY := 0.66
+const AMBIENT_ENERGY := 0.44
 
 const CAMERA_FOV := 21.0
 const CAMERA_POSITION := Vector3(0.0, 16.2, 12.6)
@@ -28,8 +28,8 @@ const MIN_FRAME_SCALE := 0.82
 const MAX_FRAME_SCALE := 1.48
 
 const BOUNCE_POSITION := Vector3(-3.8, 4.2, 5.0)
-const BOUNCE_ENERGY := 0.40
-const BOUNCE_COLOR := Color("#FFDDBE")
+const BOUNCE_ENERGY := 0.28
+const BOUNCE_COLOR := Color("#FFD5B5")
 
 var camera: Camera3D
 var world: Node3D
@@ -76,16 +76,16 @@ func _ready() -> void:
     var holder := WorldEnvironment.new()
     var env := Environment.new()
     env.background_mode = Environment.BG_COLOR
-    env.background_color = Color("#F1E4D3")
+    env.background_color = Color("#E6D4BC")
     env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-    env.ambient_light_color = Color("#FFF0DC")
+    env.ambient_light_color = Color("#EEDCC5")
     env.ambient_light_energy = AMBIENT_ENERGY
     env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-    env.tonemap_white = 1.18
+    env.tonemap_white = 1.30
     env.glow_enabled = true
-    env.glow_intensity = 0.22
-    env.glow_bloom = 0.025
-    env.glow_hdr_threshold = 1.24
+    env.glow_intensity = 0.08
+    env.glow_bloom = 0.010
+    env.glow_hdr_threshold = 1.55
     holder.environment = env
     add_child(holder)
 
