@@ -25,6 +25,7 @@ var _result_stars: Label
 var _result_subtitle: Label
 
 var _sorter_cost := 3
+var _last_gold := -1
 
 
 func _ready() -> void:
@@ -35,6 +36,7 @@ func show_planning(gold_remaining: int = 0, spent: int = 0, optimal: int = 0, so
     if _root == null:
         return
     _sorter_cost = sorter_cost
+    _last_gold = -1
     _root.visible = true
     _result_dim.visible = false
     _result_panel.visible = false
@@ -43,7 +45,13 @@ func show_planning(gold_remaining: int = 0, spent: int = 0, optimal: int = 0, so
     _run_button.disabled = true
     clear_sorter()
     set_budget(gold_remaining, spent, optimal)
-    _hint_label.text = "Tap a foundation to build • Sorter costs %d gold" % _sorter_cost
+
+    # Do not expose BEST during planning. The puzzle is stronger when the player
+    # discovers the minimum build themselves and sees the proof on the result card.
+    if optimal > 0 and gold_remaining > optimal:
+        _hint_label.text = "Not every foundation is needed • spend as little as possible"
+    else:
+        _hint_label.text = "Tap a + foundation to build • sorter costs %d gold" % _sorter_cost
 
 
 func show_running() -> void:
@@ -51,12 +59,23 @@ func show_running() -> void:
         _root.visible = false
 
 
-func set_budget(gold_remaining: int, spent: int, optimal: int) -> void:
+func set_budget(gold_remaining: int, spent: int, _optimal: int) -> void:
     if _gold_label == null:
         return
+
+    var gold_changed := _last_gold >= 0 and gold_remaining != _last_gold
+    _last_gold = gold_remaining
+
     _gold_label.text = "GOLD  %d" % gold_remaining
-    _spent_label.text = "SPENT  %d" % spent
-    _best_label.text = "BEST  %d" % optimal
+    _spent_label.text = "USED  %d" % spent
+    _best_label.text = "BUILD  %d" % _sorter_cost
+
+    if gold_changed:
+        _gold_label.scale = Vector2.ONE * 0.90
+        var tween := Motion.tween(_gold_label)
+        tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+        tween.tween_property(_gold_label, "scale", Vector2.ONE * 1.06, 0.10)
+        tween.tween_property(_gold_label, "scale", Vector2.ONE, 0.10)
 
 
 func set_run_enabled(value: bool) -> void:
@@ -68,13 +87,15 @@ func show_sorter(sorter_id: String, mapping: Array, cost: int) -> void:
     if _config_panel == null:
         return
     _config_panel.visible = true
-    _config_title.text = "SORTER %s" % sorter_id
-    _hint_label.text = "Choose which colour uses each black rail"
+    _config_title.text = "SORTER %s   •   3 LANES" % sorter_id
+    _hint_label.text = "Check each lane colour against its destination • then RUN"
+
     for i in range(_lane_buttons.size()):
         var kind := String(mapping[i]) if i < mapping.size() else "red"
         _lane_buttons[i].text = "%d   %s" % [i + 1, kind.to_upper()]
         _style_lane_button(_lane_buttons[i], kind)
-    _remove_button.text = "REMOVE   +%d GOLD" % cost
+
+    _remove_button.text = "REMOVE   +%d" % cost
 
 
 func clear_sorter() -> void:
@@ -101,10 +122,16 @@ func show_result(stars: int, spent: int, optimal: int) -> void:
     _hint_label.text = ""
     _result_dim.visible = true
     _result_panel.visible = true
-    _result_title.text = "ROUTES COMPLETE"
+
     var star_index := clampi(stars, 1, 3)
+    _result_title.text = "MINIMUM COST" if star_index == 3 else "ROUTES COMPLETE"
     _result_stars.text = ["", "★☆☆", "★★☆", "★★★"][star_index]
-    _result_subtitle.text = "%d GOLD USED   •   BEST %d" % [spent, optimal]
+    _result_subtitle.text = (
+        "%d GOLD USED   •   OPTIMAL" % spent
+        if star_index == 3
+        else "%d GOLD USED   •   BEST %d" % [spent, optimal]
+    )
+
     _result_panel.scale = Vector2(0.92, 0.92)
     var tween := Motion.tween(_result_panel)
     tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -125,17 +152,17 @@ func _build() -> void:
     _stats.add_theme_constant_override("separation", 8)
     _root.add_child(_stats)
 
-    _gold_label = _stat_pill("GOLD  0")
-    _spent_label = _stat_pill("SPENT  0")
-    _best_label = _stat_pill("BEST  0")
+    _gold_label = _stat_pill("GOLD  0", Color("#F2DEA0"))
+    _spent_label = _stat_pill("USED  0", Color("#F3E4D3"))
+    _best_label = _stat_pill("BUILD  3", Color("#E6DED1"))
     _stats.add_child(_gold_label)
     _stats.add_child(_spent_label)
     _stats.add_child(_best_label)
 
     _hint_label = Label.new()
     _hint_label.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-    _hint_label.position = Vector2(-310, -330)
-    _hint_label.size = Vector2(620, 38)
+    _hint_label.position = Vector2(-330, -330)
+    _hint_label.size = Vector2(660, 38)
     _hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     _hint_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     _hint_label.add_theme_font_size_override("font_size", 16)
@@ -147,7 +174,10 @@ func _build() -> void:
     _config_panel.position = Vector2(-315, -288)
     _config_panel.size = Vector2(630, 112)
     _config_panel.mouse_filter = Control.MOUSE_FILTER_STOP
-    _config_panel.add_theme_stylebox_override("panel", _panel_style(Color("#F8EBDDFA"), 22, Color(0,0,0,0.10), 9))
+    _config_panel.add_theme_stylebox_override(
+        "panel",
+        _panel_style(Color("#F8EBDDFA"), 22, Color(0, 0, 0, 0.10), 9)
+    )
     _root.add_child(_config_panel)
 
     var config_box := VBoxContainer.new()
@@ -209,7 +239,10 @@ func _build() -> void:
     _result_panel.size = Vector2(560, 420)
     _result_panel.pivot_offset = Vector2(280, 210)
     _result_panel.mouse_filter = Control.MOUSE_FILTER_STOP
-    _result_panel.add_theme_stylebox_override("panel", _panel_style(Color("#FFF9F2FC"), 30, Color(0,0,0,0.20), 18))
+    _result_panel.add_theme_stylebox_override(
+        "panel",
+        _panel_style(Color("#FFF9F2FC"), 30, Color(0, 0, 0, 0.20), 18)
+    )
     _root.add_child(_result_panel)
 
     var result_box := VBoxContainer.new()
@@ -256,15 +289,19 @@ func _build() -> void:
     _config_panel.visible = false
 
 
-func _stat_pill(text_value: String) -> Label:
+func _stat_pill(text_value: String, bg: Color) -> Label:
     var label := Label.new()
     label.text = text_value
     label.custom_minimum_size = Vector2(158, 42)
+    label.pivot_offset = Vector2(79, 21)
     label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
     label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
     label.add_theme_font_size_override("font_size", 15)
     label.add_theme_color_override("font_color", Color("#5F574F"))
-    label.add_theme_stylebox_override("normal", _panel_style(Color("#F6E7D6E8"), 14, Color(0,0,0,0.06), 3))
+    label.add_theme_stylebox_override(
+        "normal",
+        _panel_style(bg, 14, Color(0, 0, 0, 0.06), 3)
+    )
     return label
 
 
