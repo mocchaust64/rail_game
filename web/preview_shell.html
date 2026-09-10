@@ -126,7 +126,15 @@
 </head>
 <body>
   <main id="stage" aria-label="Flow Factory game preview">
-    <canvas id="canvas" tabindex="0" aria-label="Flow Factory"></canvas>
+    <!--
+      Web Preview uses canvas_resize_policy=0, so Godot intentionally adopts the
+      canvas backing-store dimensions instead of resizing it. Keep this logical
+      surface identical to the mobile design viewport and scale only with CSS.
+      Without explicit width/height HTML attributes the browser defaults to
+      300x150 (landscape), which makes Godot lay out the game for the wrong
+      aspect ratio before CSS stretches/crops it into the portrait shell.
+    -->
+    <canvas id="canvas" width="1080" height="1920" tabindex="0" aria-label="Flow Factory"></canvas>
     <section id="loading" aria-live="polite">
       <div class="loading-card">
         <h1 class="brand">FLOW FACTORY</h1>
@@ -137,10 +145,17 @@
   </main>
 
   <script>
+    const DESIGN_WIDTH = 1080;
+    const DESIGN_HEIGHT = 1920;
     const canvas = document.getElementById('canvas');
     const loading = document.getElementById('loading');
     const progress = document.getElementById('progress');
     const status = document.getElementById('status');
+
+    // Defensive guard: canvas_resize_policy=0 reads these values at Godot boot.
+    // Never let a browser/template regression fall back to the HTML 300x150 default.
+    canvas.width = DESIGN_WIDTH;
+    canvas.height = DESIGN_HEIGHT;
 
     function fail(message) {
       progress.style.width = '100%';
