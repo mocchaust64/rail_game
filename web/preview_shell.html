@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <meta name="theme-color" content="#1d1a17">
+  <title>Flow Factory — Web Preview</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      background: #1d1a17;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      overscroll-behavior: none;
+      background:
+        radial-gradient(circle at 50% 15%, #332c26 0, #231f1b 40%, #171513 100%);
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    }
+
+    #stage {
+      position: relative;
+      width: min(100vw, calc(100dvh * 9 / 16));
+      height: min(100dvh, calc(100vw * 16 / 9));
+      max-width: 100vw;
+      max-height: 100dvh;
+      aspect-ratio: 9 / 16;
+      overflow: hidden;
+      background: #f1e4d3;
+      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.45);
+      touch-action: none;
+    }
+
+    #canvas {
+      position: absolute;
+      inset: 0;
+      width: 100% !important;
+      height: 100% !important;
+      display: block;
+      border: 0;
+      outline: 0;
+      background: #f1e4d3;
+      image-rendering: auto;
+      touch-action: none;
+    }
+
+    #loading {
+      position: absolute;
+      inset: 0;
+      z-index: 10;
+      display: grid;
+      place-items: center;
+      padding: 32px;
+      background: #f1e4d3;
+      color: #4e463f;
+      transition: opacity 180ms ease, visibility 180ms ease;
+    }
+
+    #loading.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .loading-card {
+      width: min(76%, 360px);
+      text-align: center;
+    }
+
+    .brand {
+      margin: 0 0 18px;
+      font-size: clamp(22px, 4.5vw, 34px);
+      font-weight: 800;
+      letter-spacing: 0.03em;
+    }
+
+    .status {
+      min-height: 22px;
+      margin: 12px 0 0;
+      font-size: 14px;
+      color: #776c62;
+    }
+
+    .track {
+      width: 100%;
+      height: 8px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #ddcdbb;
+    }
+
+    #progress {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: #d97858;
+      transition: width 90ms linear;
+    }
+
+    .error {
+      color: #a74d40;
+      line-height: 1.45;
+    }
+
+    @media (max-aspect-ratio: 9/16) {
+      #stage {
+        width: 100vw;
+        height: calc(100vw * 16 / 9);
+      }
+    }
+  </style>
+  <script src="$GODOT_URL"></script>
+</head>
+<body>
+  <main id="stage" aria-label="Flow Factory game preview">
+    <canvas id="canvas" tabindex="0" aria-label="Flow Factory"></canvas>
+    <section id="loading" aria-live="polite">
+      <div class="loading-card">
+        <h1 class="brand">FLOW FACTORY</h1>
+        <div class="track"><div id="progress"></div></div>
+        <p id="status" class="status">Loading preview…</p>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const loading = document.getElementById('loading');
+    const progress = document.getElementById('progress');
+    const status = document.getElementById('status');
+
+    function fail(message) {
+      progress.style.width = '100%';
+      progress.style.background = '#a74d40';
+      status.className = 'status error';
+      status.textContent = message;
+    }
+
+    if (!Engine.isWebGLAvailable(2)) {
+      fail('This browser does not support WebGL 2. Open the preview in a recent Chrome, Edge, Firefox, or Safari.');
+    } else {
+      const engine = new Engine($GODOT_CONFIG);
+      engine.startGame({
+        canvas,
+        onProgress(current, total) {
+          if (total > 0) {
+            const pct = Math.max(0, Math.min(100, (current / total) * 100));
+            progress.style.width = `${pct.toFixed(1)}%`;
+            status.textContent = `Loading ${Math.round(pct)}%`;
+          } else {
+            status.textContent = 'Loading game data…';
+          }
+        },
+      }).then(() => {
+        progress.style.width = '100%';
+        status.textContent = 'Ready';
+        requestAnimationFrame(() => {
+          loading.classList.add('hidden');
+          canvas.focus();
+        });
+      }).catch((error) => {
+        console.error(error);
+        fail('Preview failed to start. Open the browser console for details.');
+      });
+    }
+
+    document.addEventListener('pointerdown', () => canvas.focus(), { passive: true });
+  </script>
+</body>
+</html>
