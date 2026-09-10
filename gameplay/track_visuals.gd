@@ -1,16 +1,19 @@
 class_name TrackVisuals
 extends RefCounted
 # Reference track language:
-# - smooth pale metal guide rails show every possible route
-# - a dark conveyor belt occupies the connected route
+# - possible routes are quiet matte guides, never dominant white wires
+# - a dark conveyor belt occupies the configured/active route
 # - no railroad sleepers/bolts
 # - belt seams move continuously so the factory never feels static
 
 const BELT_WIDTH := 0.64
 const BELT_BASE_WIDTH := 0.74
-const RAIL_OFFSET := 0.39
-const RAIL_RADIUS := 0.055
+const RAIL_OFFSET := 0.35
+const RAIL_RADIUS := 0.045
 const RAIL_HEIGHT := 0.19
+const PREVIEW_WIDTH := 0.115
+const PREVIEW_HEIGHT := 0.025
+const PREVIEW_Y := 0.115
 
 
 static func create_path(
@@ -35,7 +38,7 @@ static func create_path(
             [-RAIL_OFFSET, RAIL_OFFSET],
             RAIL_RADIUS,
             RAIL_HEIGHT,
-            VisualFactory.material(Color("#D6D8D5"), 0.25, 0.0, 0.24)
+            VisualFactory.material(Color("#AAA9A3"), 0.42, 0.0, 0.16)
         )
 
     if show_belt:
@@ -48,7 +51,7 @@ static func create_path(
                 BELT_BASE_WIDTH,
                 0.09,
                 0.065,
-                VisualFactory.material(Color("#6B6E70"), 0.62, 0.0, 0.04)
+                VisualFactory.material(Color("#696B6C"), 0.62, 0.0, 0.04)
             )
             _strip_layer(
                 root,
@@ -64,6 +67,28 @@ static func create_path(
             root.add_child(motion)
             motion.setup(belt_points)
 
+    return root
+
+
+# Candidate sorter routes should communicate topology without becoming the
+# strongest element on the board. A single thin matte centre guide is enough;
+# once a sorter is built the full black belt is drawn over it.
+static func create_preview_path(parent: Node3D, points: PackedVector3Array) -> Node3D:
+    var root := Node3D.new()
+    root.name = "SorterRoutePreview"
+    parent.add_child(root)
+    if points.size() < 2:
+        return root
+
+    _strip_layer(
+        root,
+        "PreviewGuide",
+        points,
+        PREVIEW_WIDTH,
+        PREVIEW_HEIGHT,
+        PREVIEW_Y,
+        VisualFactory.material(Color(0.48, 0.46, 0.43, 0.34), 0.76, 0.0, 0.02)
+    )
     return root
 
 
