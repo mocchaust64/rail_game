@@ -90,6 +90,39 @@ jobs:
           set -euo pipefail
           GODOT_BIN="${GITHUB_WORKSPACE}/.ci/godot/godot" bash scripts/run_godot_check.sh
 
+      - name: Capture rendered portrait visual QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf build/visual_qa
+          mkdir -p build/visual_qa
+
+          if ! command -v xvfb-run >/dev/null 2>&1; then
+            sudo apt-get update -y
+            sudo apt-get install -y xvfb
+          fi
+
+          xvfb-run -a -s "-screen 0 1080x1920x24" \
+            .ci/godot/godot \
+            --path . \
+            --rendering-method gl_compatibility \
+            --resolution 1080x1920 \
+            res://tests/visual_capture.tscn
+
+          for level in 01 02 03; do
+            test -s "build/visual_qa/level_${level}_plan.png"
+            test -s "build/visual_qa/level_${level}_built.png"
+          done
+
+      - name: Upload rendered visual QA
+        uses: actions/upload-artifact@v4
+        with:
+          name: flow-factory-visual-qa-${{ github.sha }}
+          path: build/visual_qa
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 6
+
       - name: Export release Web preview
         shell: bash
         run: |
