@@ -49,10 +49,6 @@ static func build(level: Dictionary, world: Node3D, pool_size: int) -> Dictionar
     var item_pool := ItemPool.new(world, pool_size)
     VisualFactory.create_floor(world, occupied)
     var buffer_chute := VisualFactory.create_buffer_chute(world)
-
-    # The whole physical conveyor network is level infrastructure. It is visible
-    # before the player builds anything so planning means reading a real factory,
-    # not guessing which rails will appear later.
     _draw_tracks(nodes_by_id, positions, world)
 
     var sources: Dictionary = {}
@@ -122,10 +118,14 @@ static func _draw_tracks(nodes_by_id: Dictionary, positions: Dictionary, world: 
         var node_type := String(node.get("type", "normal"))
 
         # Sorter outputs are permanent physical conveyors. Building the sorter
-        # only enables colour routing; it never creates or removes track geometry.
+        # only enables colour routing; it never creates/removes track geometry.
+        # Their side guide rails stay hidden because six white edges per sorter
+        # create visual spaghetti on dense puzzle boards. The dark belt itself is
+        # the readable permanent infrastructure.
         var default_belt := node_type != "junction"
+        var default_guides := node_type != "sorter_site"
         var show_belt := bool(node.get("belt", default_belt))
-        var show_guides := bool(node.get("guides", true))
+        var show_guides := bool(node.get("guides", default_guides))
 
         for raw_target in targets:
             var target := String(raw_target)
@@ -134,7 +134,6 @@ static func _draw_tracks(nodes_by_id: Dictionary, positions: Dictionary, world: 
             var key := "%s>%s" % [id, target]
             if drawn.has(key):
                 continue
-
             var start: Vector3 = positions[id]
             var finish: Vector3 = positions[target]
             var points := TrackGeometry.path_for(id, target, start, finish)
