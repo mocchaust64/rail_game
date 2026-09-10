@@ -10,15 +10,23 @@
   "buffer_capacity": 4,
   "buffer_return_delay": 3.0,
   "nodes": [
-    {"id": "S1", "type": "source", "pos": [-2.55, -5.9], "next": "A", "source_style": "compact"},
-    {"id": "S2", "type": "source", "pos": [2.55, -5.9], "next": "C", "source_style": "compact"},
-    {"id": "A", "type": "sorter_site", "pos": [-2.25, -2.35], "out_1": "R", "out_2": "B", "out_3": "D1", "mapping": ["blue", "red", "yellow"], "build_cost": 3},
-    {"id": "C", "type": "sorter_site", "pos": [2.25, -2.35], "out_1": "B", "out_2": "Y", "out_3": "D2", "mapping": ["yellow", "red", "blue"], "build_cost": 3},
-    {"id": "D1", "type": "sorter_site", "pos": [-0.95, 0.45], "out_1": "R", "out_2": "B", "out_3": "Y", "mapping": ["red", "blue", "yellow"], "build_cost": 3},
-    {"id": "D2", "type": "sorter_site", "pos": [0.95, 0.45], "out_1": "R", "out_2": "B", "out_3": "Y", "mapping": ["red", "blue", "yellow"], "build_cost": 3},
-    {"id": "R", "type": "receiver", "kind": "red", "pos": [-3.25, 4.25]},
-    {"id": "B", "type": "receiver", "kind": "blue", "pos": [0, 4.5]},
-    {"id": "Y", "type": "receiver", "kind": "yellow", "pos": [3.25, 4.25]}
+    {"id": "S1", "type": "source", "pos": [-2.45, -5.8], "next": "A", "source_style": "compact"},
+    {"id": "S2", "type": "source", "pos": [2.45, -5.8], "next": "C", "source_style": "compact"},
+
+    {"id": "A", "type": "sorter_site", "pos": [-2.20, -2.40], "out_1": "R", "out_2": "B", "out_3": "D1", "mapping": ["blue", "red", "yellow"], "build_cost": 3},
+    {"id": "C", "type": "sorter_site", "pos": [2.20, -2.40], "out_1": "B", "out_2": "Y", "out_3": "D2", "mapping": ["yellow", "red", "blue"], "build_cost": 3},
+
+    {"id": "D1", "type": "sorter_site", "pos": [-3.40, 0.15], "out_1": "R", "out_2": "DL1", "out_3": "DL2", "mapping": ["red", "blue", "yellow"], "build_cost": 3},
+    {"id": "DL1", "type": "normal", "pos": [-3.62, 1.62], "next": "R"},
+    {"id": "DL2", "type": "normal", "pos": [-3.15, 2.45], "next": "R"},
+
+    {"id": "D2", "type": "sorter_site", "pos": [3.40, 0.15], "out_1": "Y", "out_2": "DR1", "out_3": "DR2", "mapping": ["yellow", "blue", "red"], "build_cost": 3},
+    {"id": "DR1", "type": "normal", "pos": [3.62, 1.62], "next": "Y"},
+    {"id": "DR2", "type": "normal", "pos": [3.15, 2.45], "next": "Y"},
+
+    {"id": "R", "type": "receiver", "kind": "red", "pos": [-3.00, 4.25]},
+    {"id": "B", "type": "receiver", "kind": "blue", "pos": [0.00, 4.55]},
+    {"id": "Y", "type": "receiver", "kind": "yellow", "pos": [3.00, 4.25]}
   ],
   "spawns": [
     {"source": "S1", "kind": "red"},
