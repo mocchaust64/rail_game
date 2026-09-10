@@ -11,9 +11,9 @@ const BELT_BASE_WIDTH := 0.74
 const RAIL_OFFSET := 0.35
 const RAIL_RADIUS := 0.045
 const RAIL_HEIGHT := 0.19
-const PREVIEW_WIDTH := 0.115
-const PREVIEW_HEIGHT := 0.025
-const PREVIEW_Y := 0.115
+const PREVIEW_WIDTH := 0.09
+const PREVIEW_HEIGHT := 0.020
+const PREVIEW_Y := 0.112
 
 
 static func create_path(
@@ -38,7 +38,7 @@ static func create_path(
             [-RAIL_OFFSET, RAIL_OFFSET],
             RAIL_RADIUS,
             RAIL_HEIGHT,
-            VisualFactory.material(Color("#AAA9A3"), 0.42, 0.0, 0.16)
+            VisualFactory.material(Color("#A7A6A0"), 0.46, 0.0, 0.12)
         )
 
     if show_belt:
@@ -87,7 +87,7 @@ static func create_preview_path(parent: Node3D, points: PackedVector3Array) -> N
         PREVIEW_WIDTH,
         PREVIEW_HEIGHT,
         PREVIEW_Y,
-        VisualFactory.material(Color(0.48, 0.46, 0.43, 0.34), 0.76, 0.0, 0.02)
+        VisualFactory.material(Color(0.38, 0.37, 0.35, 0.20), 0.82, 0.0, 0.0)
     )
     return root
 
