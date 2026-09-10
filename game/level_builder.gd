@@ -121,7 +121,7 @@ static func _draw_tracks(nodes_by_id: Dictionary, positions: Dictionary, world: 
         var targets := _targets(node)
         var node_type := String(node.get("type", "normal"))
 
-        # Sorter exits are now permanent physical conveyors. Building the sorter
+        # Sorter outputs are permanent physical conveyors. Building the sorter
         # only enables colour routing; it never creates or removes track geometry.
         var default_belt := node_type != "junction"
         var show_belt := bool(node.get("belt", default_belt))
