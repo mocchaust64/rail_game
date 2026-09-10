@@ -35,6 +35,7 @@ def check_required_files() -> None:
         "gameplay/track_visuals.gd",
         "gameplay/track_motion.gd",
         "gameplay/level_validator.gd",
+        "gameplay/machine_visuals.gd",
         "ui/hud.gd",
         "ui/planning_hud.gd",
         "ui/cargo_icon.gd",
@@ -105,27 +106,19 @@ def graph_has_cycle(nodes: dict[str, dict]) -> bool:
     return any(color[n] == 0 and visit(n) for n in nodes)
 
 
-def simulate_spawn(
-    nodes: dict[str, dict],
-    spawn: dict,
-    built: set[str],
-    mappings: dict[str, tuple[str, str, str]],
-) -> bool:
+def simulate_spawn(nodes: dict[str, dict], spawn: dict, built: set[str], mappings: dict[str, tuple[str, str, str]]) -> bool:
     current = spawn["source"]
     kind = spawn["kind"]
     visited: set[str] = set()
-
     while True:
         if current in visited or current not in nodes:
             return False
         visited.add(current)
         node = nodes[current]
         node_type = node["type"]
-
         if node_type in {"source", "normal"}:
             current = node["next"]
             continue
-
         if node_type == "sorter_site":
             if current not in built:
                 return False
@@ -136,10 +129,8 @@ def simulate_spawn(
                 return False
             current = node[f"out_{lane + 1}"]
             continue
-
         if node_type == "receiver":
             return node["kind"] == kind
-
         return False
 
 
@@ -152,14 +143,10 @@ def solve_sorter_level(level: dict) -> tuple[int | None, dict | None, int, int]:
     valid_solutions = 0
     optimal_solutions = 0
     budget = int(level["gold_budget"])
-
-    # A site has seven states: unbuilt, or built with one of six permutations.
-    # Three slice levels are intentionally tiny enough to exhaustively prove.
     for state in itertools.product(range(7), repeat=len(sorter_ids)):
         built: set[str] = set()
         mappings: dict[str, tuple[str, str, str]] = {}
         cost = 0
-
         for sorter_id, option in zip(sorter_ids, state):
             if option == 0:
                 continue
@@ -167,13 +154,10 @@ def solve_sorter_level(level: dict) -> tuple[int | None, dict | None, int, int]:
             mappings[sorter_id] = permutations[option - 1]
             node = nodes[sorter_id]
             cost += int(node.get("build_cost", level["sorter_cost"]))
-
         if cost > budget:
             continue
-
         if not all(simulate_spawn(nodes, spawn, built, mappings) for spawn in level["spawns"]):
             continue
-
         valid_solutions += 1
         if best_cost is None or cost < best_cost:
             best_cost = cost
@@ -181,7 +165,6 @@ def solve_sorter_level(level: dict) -> tuple[int | None, dict | None, int, int]:
             optimal_solutions = 1
         elif cost == best_cost:
             optimal_solutions += 1
-
     return best_cost, best_solution, valid_solutions, optimal_solutions
 
 
@@ -189,10 +172,7 @@ def initial_mapping_solves(level: dict) -> bool:
     nodes = {node["id"]: node for node in level["nodes"]}
     sorter_nodes = [node for node in level["nodes"] if node["type"] == "sorter_site"]
     built = {node["id"] for node in sorter_nodes}
-    mappings = {
-        node["id"]: tuple(node.get("mapping", KINDS))
-        for node in sorter_nodes
-    }
+    mappings = {node["id"]: tuple(node.get("mapping", KINDS)) for node in sorter_nodes}
     return all(simulate_spawn(nodes, spawn, built, mappings) for spawn in level["spawns"])
 
 
@@ -200,33 +180,20 @@ def validate_level(level: dict, expected_id: int) -> None:
     name = f"level_{expected_id:02d}.json"
     if level.get("id") != expected_id:
         fail(f"{name}: id must be {expected_id}")
-
-    for key in (
-        "gold_budget",
-        "sorter_cost",
-        "optimal_cost",
-        "two_star_cost",
-        "item_speed",
-        "spawn_interval",
-        "buffer_capacity",
-        "buffer_return_delay",
-    ):
+    for key in ("gold_budget", "sorter_cost", "optimal_cost", "two_star_cost", "item_speed", "spawn_interval", "buffer_capacity", "buffer_return_delay"):
         if key not in level:
             fail(f"{name}: missing {key}")
-
     nodes_list = level.get("nodes", [])
     nodes = {node.get("id"): node for node in nodes_list}
     if len(nodes) != len(nodes_list) or None in nodes:
         fail(f"{name}: duplicate or missing node id")
         return
-
     sorter_count = 0
     for node_id, node in nodes.items():
         node_type = node.get("type")
         if node_type not in {"source", "normal", "sorter_site", "receiver"}:
             fail(f"{name}: unsupported node type {node_type} at {node_id}")
             continue
-
         if node_type == "sorter_site":
             sorter_count += 1
             targets = [node.get("out_1"), node.get("out_2"), node.get("out_3")]
@@ -235,11 +202,9 @@ def validate_level(level: dict, expected_id: int) -> None:
             mapping = node.get("mapping", [])
             if sorted(mapping) != sorted(KINDS):
                 fail(f"{name}: sorter {node_id} mapping must be a permutation of {KINDS}")
-
         for nxt in outputs(node):
             if nxt not in nodes:
                 fail(f"{name}: {node_id} points to missing {nxt}")
-
     if sorter_count == 0:
         fail(f"{name}: vertical slice requires at least one sorter site")
     if graph_has_cycle(nodes):
@@ -249,7 +214,6 @@ def validate_level(level: dict, expected_id: int) -> None:
     if best_cost is None:
         fail(f"{name}: no valid sorter configuration solves all cargo")
         return
-
     declared = int(level["optimal_cost"])
     budget = int(level["gold_budget"])
     two_star = int(level["two_star_cost"])
@@ -262,31 +226,19 @@ def validate_level(level: dict, expected_id: int) -> None:
 
     optimal_builds = len(solution["built"]) if solution else 0
     decoys = sorter_count - optimal_builds
-    print(
-        f" - L{expected_id}: optimal={best_cost} gold, sites={sorter_count}, "
-        f"optimal_builds={optimal_builds}, decoys={decoys}, "
-        f"valid_plans={valid_count}, optimal_plans={optimal_count}"
-    )
-
-    # A polished puzzle should have a clear intended best answer, not several
-    # equally-cheap configurations that teach different rules by accident.
+    print(f" - L{expected_id}: optimal={best_cost} gold, sites={sorter_count}, optimal_builds={optimal_builds}, decoys={decoys}, valid_plans={valid_count}, optimal_plans={optimal_count}")
     if optimal_count != 1:
         fail(f"{name}: expected one unique optimal plan, solver found {optimal_count}")
-
-    # Curriculum contract: L1 teaches BUILD, L2 teaches CONFIGURE, L3 teaches
-    # OPTIMIZE. This stops later level edits from silently ruining onboarding.
     if expected_id == 1:
         if sorter_count != 1 or budget != best_cost:
             fail("level_01.json: BUILD lesson must contain one required sorter and exact budget")
         if not initial_mapping_solves(level):
             fail("level_01.json: initial colours must already be correct; teach building first")
-
     if expected_id == 2:
         if sorter_count != 1 or budget != best_cost:
             fail("level_02.json: CONFIGURE lesson must use one required sorter")
         if initial_mapping_solves(level):
             fail("level_02.json: initial colours must be wrong so the player learns programming")
-
     if expected_id == 3:
         if decoys < 2:
             fail("level_03.json: OPTIMIZE lesson needs at least two unnecessary build sites")
@@ -307,33 +259,32 @@ def check_slice_levels() -> None:
 
 def check_controller_contract() -> None:
     text = (ROOT / "game" / "game_controller.gd").read_text(encoding="utf-8")
-    required = [
-        "const LEVEL_COUNT := 3",
-        "GameState.PLANNING",
-        "_try_build_sorter",
-        "_gold_remaining",
-        "_optimal_cost",
-        "_stars_for_spend",
-        "node_type == \"sorter_site\"",
-    ]
+    required = ["const LEVEL_COUNT := 3", "GameState.PLANNING", "_try_build_sorter", "_gold_remaining", "_optimal_cost", "_stars_for_spend", "node_type == \"sorter_site\""]
     for token in required:
         if token not in text:
             fail(f"game_controller.gd missing sorter-economy contract token: {token}")
 
     sorter_text = (ROOT / "gameplay" / "sorter_actor.gd").read_text(encoding="utf-8")
-    for token in (
-        "func build()",
-        "func demolish()",
-        "func cycle_lane",
-        "ActiveSorterBelts",
-        "SorterLaneMarkers",
-    ):
+    for token in ("func build()", "func demolish()", "func cycle_lane", "SorterLaneMarkers", "Exit%d"):
         if token not in sorter_text:
             fail(f"sorter_actor.gd missing: {token}")
+    if "ActiveSorterBelts" in sorter_text:
+        fail("sorter_actor.gd must not create conveyor geometry; belts are permanent level infrastructure")
+
+    builder_text = (ROOT / "game" / "level_builder.gd").read_text(encoding="utf-8")
+    for token in ("sorter outputs", "permanent physical conveyors", "TrackVisuals.create_path"):
+        if token.lower() not in builder_text.lower():
+            fail(f"level_builder.gd missing permanent-belt contract token: {token}")
+
+    machine_text = (ROOT / "gameplay" / "machine_visuals.gd").read_text(encoding="utf-8")
+    if "populate_sorter_shell" not in machine_text:
+        fail("machine_visuals.gd missing cohesive sorter machine shell")
 
     planning_text = (ROOT / "ui" / "planning_hud.gd").read_text(encoding="utf-8")
     if '"BEST  %d"' in planning_text:
         fail("planning_hud.gd: do not reveal the optimal cost before the result")
+    if "→" not in planning_text:
+        fail("planning_hud.gd: exit mapping must visually read as exit -> colour")
 
 
 def check_audio() -> None:
@@ -351,19 +302,18 @@ def main() -> int:
     check_slice_levels()
     check_controller_contract()
     check_audio()
-
     if ERRORS:
         print("FLOW FACTORY VERIFY: FAIL")
         for error in ERRORS:
             print(" -", error)
         return 1
-
     print("FLOW FACTORY VERIFY: PASS")
+    print(" - conveyor network is permanent infrastructure before sorter build")
     print(" - L1 teaches BUILD, L2 teaches CONFIGURE, L3 teaches OPTIMIZE")
     print(" - exhaustive solver proves declared optimal gold costs")
     print(" - every slice level has exactly one cheapest solution")
     print(" - level 3 contains deliberate unnecessary build sites")
-    print(" - optimal cost stays hidden until the result screen")
+    print(" - exit numbers connect physical gates to colour controls")
     print(" - custom visuals remain vendor-free")
     return 0
 
