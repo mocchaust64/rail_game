@@ -3,7 +3,7 @@
 ; since the parameters that go here are not all obvious.
 ;
 ; Format:
-;   [section] ; section goes between []
+;   [section] ; section between []
 ;   param=value ; assign values to parameters
 
 config_version=5
@@ -56,3 +56,4 @@ renderer/rendering_method="mobile"
 renderer/rendering_method.mobile="mobile"
 renderer/rendering_method.web="gl_compatibility"
 anti_aliasing/quality/msaa_3d=1
+environment/defaults/default_clear_color=Color(0.811765, 0.752941, 0.682353, 1)
