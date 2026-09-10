@@ -30,6 +30,9 @@ const MAX_FRAME_SCALE := 1.48
 const BOUNCE_POSITION := Vector3(-3.8, 4.2, 5.0)
 const BOUNCE_ENERGY := 0.18
 const BOUNCE_COLOR := Color("#FFE8D2")
+const BACKDROP_COLOR := Color("#CBBBA8")
+const BACKDROP_SIZE := Vector3(44.0, 0.12, 68.0)
+const BACKDROP_POSITION := Vector3(0.0, -0.47, -5.0)
 
 var camera: Camera3D
 var world: Node3D
@@ -43,6 +46,19 @@ func _ready() -> void:
     world = Node3D.new()
     world.name = "World"
     add_child(world)
+
+    # Persistent yard underneath the per-level floor. It is deliberately much
+    # larger than every authored board so the portrait camera can never reveal a
+    # white clear region at the far/top edge of the playfield.
+    var backdrop := MeshInstance3D.new()
+    backdrop.name = "FactoryYardBackdrop"
+    var backdrop_mesh := BoxMesh.new()
+    backdrop_mesh.size = BACKDROP_SIZE
+    backdrop.mesh = backdrop_mesh
+    backdrop.position = BACKDROP_POSITION
+    backdrop.material_override = VisualFactory.material(BACKDROP_COLOR, 0.96)
+    backdrop.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+    add_child(backdrop)
 
     camera = Camera3D.new()
     camera.name = "GameCamera"
