@@ -17,12 +17,12 @@
     {"id": "C", "type": "sorter_site", "pos": [2.20, -2.40], "out_1": "B", "out_2": "Y", "out_3": "D2", "mapping": ["yellow", "red", "blue"], "build_cost": 3},
 
     {"id": "D1", "type": "sorter_site", "pos": [-3.40, 0.15], "out_1": "R", "out_2": "DL1", "out_3": "DL2", "mapping": ["red", "blue", "yellow"], "build_cost": 3},
-    {"id": "DL1", "type": "normal", "pos": [-3.62, 1.62], "next": "R"},
-    {"id": "DL2", "type": "normal", "pos": [-3.15, 2.45], "next": "R"},
+    {"id": "DL1", "type": "normal", "pos": [-3.62, 1.62], "next": "R", "guides": false},
+    {"id": "DL2", "type": "normal", "pos": [-3.15, 2.45], "next": "R", "guides": false},
 
     {"id": "D2", "type": "sorter_site", "pos": [3.40, 0.15], "out_1": "Y", "out_2": "DR1", "out_3": "DR2", "mapping": ["yellow", "blue", "red"], "build_cost": 3},
-    {"id": "DR1", "type": "normal", "pos": [3.62, 1.62], "next": "Y"},
-    {"id": "DR2", "type": "normal", "pos": [3.15, 2.45], "next": "Y"},
+    {"id": "DR1", "type": "normal", "pos": [3.62, 1.62], "next": "Y", "guides": false},
+    {"id": "DR2", "type": "normal", "pos": [3.15, 2.45], "next": "Y", "guides": false},
 
     {"id": "R", "type": "receiver", "kind": "red", "pos": [-3.00, 4.25]},
     {"id": "B", "type": "receiver", "kind": "blue", "pos": [0.00, 4.55]},
