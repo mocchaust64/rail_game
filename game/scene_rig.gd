@@ -18,7 +18,10 @@ const CAMERA_POSITION := Vector3(0.0, 16.2, 12.6)
 const CAMERA_TARGET := Vector3(0, 0.28, -0.20)
 const FRAME_WIDTH := 7.2
 const FRAME_DEPTH := 13.6
-const FRAME_SIDE_PADDING := 0.90
+# Node positions are centre points; receivers extend ~0.8 world units sideways.
+# A 2.05 margin keeps the full silhouettes plus a touch-safe gutter visible on
+# 9:16 and taller portrait screens instead of clipping the outer machines.
+const FRAME_SIDE_PADDING := 2.05
 const FRAME_TOP_PADDING := 2.70
 const FRAME_BOTTOM_PADDING := 2.10
 const MIN_FRAME_SCALE := 0.82
