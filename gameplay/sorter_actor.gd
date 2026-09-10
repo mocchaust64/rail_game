@@ -1,7 +1,7 @@
 class_name SorterActor
 extends Node3D
 
-const KINDS := ["red", "blue", "yellow"]
+const KINDS: Array[String] = ["red", "blue", "yellow"]
 
 var sorter_id: String = ""
 var is_built: bool = false
@@ -152,10 +152,10 @@ func cycle_lane(output_index: int) -> bool:
     if output_index < 0 or output_index >= 3:
         return false
 
-    var current := _mapping[output_index]
-    var current_kind_index := KINDS.find(current)
-    var next_kind := KINDS[(current_kind_index + 1) % KINDS.size()]
-    var swap_index := _mapping.find(next_kind)
+    var current: String = _mapping[output_index]
+    var current_kind_index: int = KINDS.find(current)
+    var next_kind: String = KINDS[(current_kind_index + 1) % KINDS.size()]
+    var swap_index: int = _mapping.find(next_kind)
     if swap_index < 0:
         return false
 
