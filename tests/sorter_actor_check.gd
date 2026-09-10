@@ -34,32 +34,35 @@ func _ready() -> void:
     if not sorter.build():
         failures.append("sorter did not build")
 
-    var active := sorter.get_node_or_null(NodePath("ActiveSorterBelts")) as Node3D
-    if active == null:
-        failures.append("built sorter did not expose active black belts")
-    elif active.get_child_count() != 3:
-        failures.append("built sorter must expose exactly three active black lanes")
-    else:
-        for i in range(3):
-            if active.get_child(i).name != "ActiveLane%d" % (i + 1):
-                failures.append("active lane %d does not have stable visual identity" % (i + 1))
+    # Conveyor geometry belongs to the level and is already visible before the
+    # sorter is installed. The sorter must not duplicate three black belts.
+    if sorter.get_node_or_null(NodePath("ActiveSorterBelts")) != null:
+        failures.append("sorter must not spawn duplicate conveyor geometry")
+
+    var house := sorter.get_node_or_null(NodePath("SorterHouse")) as Node3D
+    if house == null:
+        failures.append("built sorter has no toy-factory machine shell")
 
     var markers := sorter.get_node_or_null(NodePath("SorterLaneMarkers")) as Node3D
     if markers == null or markers.get_child_count() != 3:
-        failures.append("sorter must show three physical colour markers")
+        failures.append("sorter must show three physical exit markers")
+    else:
+        for i in range(3):
+            if markers.get_child(i).name != "Exit%d" % (i + 1):
+                failures.append("sorter exit %d has no stable numbered identity" % (i + 1))
 
     var before := sorter.mapping_for_ui()
     if not sorter.cycle_lane(0):
-        failures.append("planning could not change a lane")
+        failures.append("planning could not change an exit colour")
     var after := sorter.mapping_for_ui()
     if before == after:
-        failures.append("lane cycle did not change mapping")
+        failures.append("exit colour cycle did not change mapping")
 
     var unique: Dictionary = {}
     for kind in after:
         unique[String(kind)] = true
     if unique.size() != 3:
-        failures.append("lane cycle duplicated a colour")
+        failures.append("exit colour cycle duplicated a colour")
 
     sorter.set_planning_mode(false)
     if sorter.cycle_lane(1):
@@ -74,7 +77,7 @@ func _ready() -> void:
     sorter.queue_free()
 
     if failures.is_empty():
-        print("sorter actor: PASS (foundation, 3 black lanes, colour markers, runtime lock, refund path)")
+        print("sorter actor: PASS (foundation, numbered exits, colour mapping, runtime lock, refund path)")
         get_tree().quit(0)
         return
 
