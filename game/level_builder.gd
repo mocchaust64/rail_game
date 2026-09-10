@@ -50,6 +50,9 @@ static func build(level: Dictionary, world: Node3D, pool_size: int) -> Dictionar
     VisualFactory.create_floor(world, occupied)
     var buffer_chute := VisualFactory.create_buffer_chute(world)
 
+    # The whole physical conveyor network is level infrastructure. It is visible
+    # before the player builds anything so planning means reading a real factory,
+    # not guessing which rails will appear later.
     _draw_tracks(nodes_by_id, positions, world)
 
     var sources: Dictionary = {}
@@ -118,11 +121,9 @@ static func _draw_tracks(nodes_by_id: Dictionary, positions: Dictionary, world: 
         var targets := _targets(node)
         var node_type := String(node.get("type", "normal"))
 
-        # Sorter outputs are possible routes, not active conveyors yet. Rendering
-        # them as full twin white rails made later levels read like a wire mesh.
-        # Keep them as one quiet matte preview line; SorterActor overlays the
-        # full dark conveyor when the player actually builds that sorter.
-        var default_belt := node_type not in ["junction", "sorter_site"]
+        # Sorter exits are now permanent physical conveyors. Building the sorter
+        # only enables colour routing; it never creates or removes track geometry.
+        var default_belt := node_type != "junction"
         var show_belt := bool(node.get("belt", default_belt))
         var show_guides := bool(node.get("guides", true))
 
@@ -137,10 +138,7 @@ static func _draw_tracks(nodes_by_id: Dictionary, positions: Dictionary, world: 
             var start: Vector3 = positions[id]
             var finish: Vector3 = positions[target]
             var points := TrackGeometry.path_for(id, target, start, finish)
-            if node_type == "sorter_site" and not show_belt:
-                TrackVisuals.create_preview_path(world, points)
-            else:
-                TrackVisuals.create_path(world, points, 0.0, 0.0, show_belt, show_guides)
+            TrackVisuals.create_path(world, points, 0.0, 0.0, show_belt, show_guides)
             drawn[key] = true
 
 
