@@ -118,9 +118,10 @@ static func _draw_tracks(nodes_by_id: Dictionary, positions: Dictionary, world: 
         var targets := _targets(node)
         var node_type := String(node.get("type", "normal"))
 
-        # Sorter outputs are possible routes. Before a sorter is built they stay
-        # as pale guide rails only. SorterActor adds the continuous black belt
-        # after construction, which makes the player's plan readable at a glance.
+        # Sorter outputs are possible routes, not active conveyors yet. Rendering
+        # them as full twin white rails made later levels read like a wire mesh.
+        # Keep them as one quiet matte preview line; SorterActor overlays the
+        # full dark conveyor when the player actually builds that sorter.
         var default_belt := node_type not in ["junction", "sorter_site"]
         var show_belt := bool(node.get("belt", default_belt))
         var show_guides := bool(node.get("guides", true))
@@ -136,7 +137,10 @@ static func _draw_tracks(nodes_by_id: Dictionary, positions: Dictionary, world: 
             var start: Vector3 = positions[id]
             var finish: Vector3 = positions[target]
             var points := TrackGeometry.path_for(id, target, start, finish)
-            TrackVisuals.create_path(world, points, 0.0, 0.0, show_belt, show_guides)
+            if node_type == "sorter_site" and not show_belt:
+                TrackVisuals.create_preview_path(world, points)
+            else:
+                TrackVisuals.create_path(world, points, 0.0, 0.0, show_belt, show_guides)
             drawn[key] = true
 
 
