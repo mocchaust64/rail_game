@@ -33,8 +33,20 @@ func _ready() -> void:
         failures.append("sorter should begin as a foundation")
     if not sorter.build():
         failures.append("sorter did not build")
-    if sorter.get_node_or_null(NodePath("ActiveSorterBelts")) == null:
+
+    var active := sorter.get_node_or_null(NodePath("ActiveSorterBelts")) as Node3D
+    if active == null:
         failures.append("built sorter did not expose active black belts")
+    elif active.get_child_count() != 3:
+        failures.append("built sorter must expose exactly three active black lanes")
+    else:
+        for i in range(3):
+            if active.get_child(i).name != "ActiveLane%d" % (i + 1):
+                failures.append("active lane %d does not have stable visual identity" % (i + 1))
+
+    var markers := sorter.get_node_or_null(NodePath("SorterLaneMarkers")) as Node3D
+    if markers == null or markers.get_child_count() != 3:
+        failures.append("sorter must show three physical colour markers")
 
     var before := sorter.mapping_for_ui()
     if not sorter.cycle_lane(0):
@@ -62,7 +74,7 @@ func _ready() -> void:
     sorter.queue_free()
 
     if failures.is_empty():
-        print("sorter actor: PASS (build, black belts, unique mapping, runtime lock, remove)")
+        print("sorter actor: PASS (foundation, 3 black lanes, colour markers, runtime lock, refund path)")
         get_tree().quit(0)
         return
 
